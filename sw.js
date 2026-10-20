@@ -1,6 +1,6 @@
 // Listening Reader service worker: keeps the app itself available offline.
 // Your documents and MP3s are not here; they live in the browser's IndexedDB.
-const VERSION = "lr-v1";
+const VERSION = "lr-v2";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {

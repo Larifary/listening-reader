@@ -112,6 +112,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{ou
 .speed{font-family:var(--f-mono);font-weight:500;font-size:.9rem;width:54px}
 .choices{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .choices .btn{font-size:.85rem;padding:.42em .8em}
+.gist-form{padding:.4em 0 .8em;border-bottom:1px solid var(--rule)}
+.gist-form ol{padding-left:1.2rem;margin:.2rem 0 .6rem}
+.gist-form a{color:var(--accent)}
+.gist-form input{flex:1;min-width:0;width:auto}
+#syncbar{flex-wrap:wrap}
 .range{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--ink)}
 .back-to{position:fixed;right:16px;bottom:calc(var(--dock-h) + 14px + env(safe-area-inset-bottom,0px));z-index:25;box-shadow:0 4px 14px rgba(0,0,0,.15)}
 
@@ -168,7 +173,7 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
       <li>Tap <b>Add files</b> here and pick the <code>.reader.json</code>, plus the <code>.mp3</code> files if you made them. Select them together. If they're in iCloud Drive, you can add them on your phone and on your laptop.</li>
     </ol>
     <p class="note">Plain <code>.txt</code> files work too. Separate paragraphs with a blank line, start a heading line with #, and put a line like <code>Page 12</code> to set the page number.</p>
-    <p class="note">Files you add stay on this device, and so does your reading position. Nothing is uploaded anywhere. After the first visit the reader works fully offline. On iPhone, open it in Safari and use Share › Add to Home Screen.</p>
+    <p class="note">Files you add stay on this device; nothing is uploaded. After the first visit the reader works fully offline. On iPhone, open it in Safari, use Share › Add to Home Screen, and add your files from the new icon. To sync your place between devices, connect GitHub under Voice and text settings in any book.</p>
   </section>
 </div>
 
@@ -190,6 +195,7 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
       <button class="btn quiet" id="ch-page">This page</button>
       <button class="btn quiet" id="ch-x" aria-label="Close">✕</button>
     </div>
+    <div class="range" id="syncbar" hidden><button class="btn small primary" id="sync-go"></button><button class="btn small quiet" id="sync-x" aria-label="Stay here">Stay here</button></div>
     <div class="range" id="rangebar" hidden><span class="chip ok" id="range-label"></span><button class="btn small quiet" id="range-x">Read to the end instead</button></div>
     <div class="where"><span id="w-sec"></span><span id="w-pos"></span></div>
     <input class="scrub" id="scrub" type="range" min="0" max="1000" value="0" aria-label="Position in document">
@@ -225,6 +231,18 @@ input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
     <div class="row"><label for="awake">Keep screen on while listening<span class="sub">The device voice stops when the screen locks. Natural MP3 audio keeps playing.</span></label><input type="checkbox" id="awake"></div>
     <div class="row"><label for="follow">Scroll along with the voice</label><input type="checkbox" id="follow" checked></div>
     <div class="row"><label>Theme</label><div class="seg" id="seg-theme"><button data-v="">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+    <div id="gist-rows" hidden>
+      <div class="row"><label>Sync position between devices<span class="sub" id="gist-sub">Saves your place to a secret GitHub gist, so your other device can pick it up. Works offline too: it sends your place once you're back online.</span></label></div>
+      <div class="gist-form" id="gist-form">
+        <ol class="note">
+          <li><a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Listening%20Reader%20sync" target="_blank" rel="noopener">Create a token on GitHub</a>. “gist” is already ticked. Pick an expiration (“No expiration” is fine), then tap Generate token and copy it.</li>
+          <li>Paste it here. Do the same on your other device, with the same token.</li>
+        </ol>
+        <div class="goto"><input id="gist-token" type="password" autocomplete="off" placeholder="ghp_…" aria-label="GitHub token"><button class="btn small primary" id="gist-connect">Connect</button></div>
+        <div class="goto"><label for="gist-device">This device</label><input id="gist-device" placeholder="iPhone"></div>
+      </div>
+      <div class="row" id="gist-on" hidden><label>Connected<span class="sub" id="gist-status"></span></label><button class="btn small quiet" id="gist-off">Disconnect</button></div>
+    </div>
     <div class="row"><label>Remove from this device<span class="sub" id="rm-sub">Deletes the text and audio stored here. Your files in iCloud stay as they are.</span></label><button class="btn small quiet" id="btn-rm">Remove</button></div>
   </div></div>
 </div>
@@ -296,6 +314,81 @@ function savePos(docId, b, s, pct, now) {
   const p = { b, s, at: Date.now(), pct };
   ls.set("pos:" + docId, p);
   remotePush(docId, p, now);
+  gist.push(docId, p, now);
+}
+
+/* ---------- position sync through a secret GitHub gist (standalone site only) ---------- */
+let IN_ARTIFACT = false; try { IN_ARTIFACT = window.top !== window.self; } catch { IN_ARTIFACT = true; }
+const GIST_FILE = "listening-reader-positions.json";
+const gist = {
+  cfg() { return ls.get("gist", null); },   // {token, id, device}
+  enabled() { return !IN_ARTIFACT && !!(this.cfg() && this.cfg().id); },
+  async api(path, opt = {}) {
+    const c = this.cfg() || {};
+    const r = await fetch("https://api.github.com" + path, { ...opt, cache: "no-store", headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + (opt.token || c.token), ...(opt.body ? { "Content-Type": "application/json" } : {}) } });
+    if (!r.ok) { const e = new Error("github " + r.status); e.status = r.status; throw e; }
+    return r.json();
+  },
+  async read() {
+    const g = await this.api("/gists/" + this.cfg().id);
+    const f = g.files && g.files[GIST_FILE];
+    if (!f) return {};
+    let txt = f.content;
+    if (f.truncated && f.raw_url) txt = await (await fetch(f.raw_url, { cache: "no-store" })).text();
+    try { return JSON.parse(txt || "{}") || {}; } catch { return {}; }
+  },
+  async connect(token, device) {
+    // reuse the gist from the other device if there is one, else make a new secret gist
+    const list = await this.api("/gists?per_page=100", { token });
+    let g = list.find(x => x.files && x.files[GIST_FILE]);
+    if (!g) g = await this.api("/gists", { token, method: "POST", body: JSON.stringify({ description: "Listening Reader positions (no text, only paragraph numbers)", public: false, files: { [GIST_FILE]: { content: "{}" } } }) });
+    ls.set("gist", { token, id: g.id, device: device || defaultDevice() });
+    this.lastOK = Date.now(); this.flushAll();
+  },
+  timers: {}, busy: false, lastOK: 0, lastErr: "",
+  push(docId, p, now) {
+    if (!this.enabled()) return;
+    const dirty = ls.get("gistDirty", {}); dirty[docId] = 1; ls.set("gistDirty", dirty);
+    clearTimeout(this.timers.flush);
+    this.timers.flush = setTimeout(() => this.flushAll(), now ? 0 : 20000);
+  },
+  async flushAll() {
+    if (!this.enabled() || this.busy) return;
+    const dirty = ls.get("gistDirty", {}); const ids = Object.keys(dirty); if (!ids.length) return;
+    if (navigator.onLine === false) return;
+    this.busy = true;
+    try {
+      const all = await this.read(); const dev = this.cfg().device || defaultDevice();
+      for (const id of ids) {
+        const mine = ls.get("pos:" + id, null); if (!mine) continue;
+        const theirs = all[id];
+        if (!theirs || mine.at >= theirs.at) all[id] = { b: mine.b, s: mine.s, pct: mine.pct || 0, at: mine.at, device: dev, pg: posPage(id, mine.b) };
+      }
+      await this.api("/gists/" + this.cfg().id, { method: "PATCH", body: JSON.stringify({ files: { [GIST_FILE]: { content: JSON.stringify(all) } } }) });
+      ls.set("gistDirty", {}); this.lastOK = Date.now(); this.lastErr = "";
+    } catch (e) { this.lastErr = e.status === 401 ? "GitHub didn't accept the token. It may have expired: make a new one and connect again." : (e.status === 404 ? "The sync gist wasn't found. Disconnect and connect again." : ""); }
+    this.busy = false;
+  }
+};
+function defaultDevice() { const u = navigator.userAgent; return /iPhone/.test(u) ? "iPhone" : /iPad/.test(u) ? "iPad" : /Mac/.test(u) ? "Mac" : /Android/.test(u) ? "Android phone" : "other device"; }
+function posPage(docId, b) { try { return R.doc && R.doc.id === docId ? R.doc.blocks[b].pg : ""; } catch { return ""; } }
+addEventListener("online", () => gist.flushAll());
+function ago(ms) { const m = Math.round((Date.now() - ms) / 60000); if (m < 2) return "just now"; if (m < 60) return m + " min ago"; const h = Math.round(m / 60); if (h < 36) return h + " h ago"; return Math.round(h / 24) + " days ago"; }
+let syncOffer = null;
+async function gistCheck(d) {
+  if (!gist.enabled() || navigator.onLine === false) return;
+  try {
+    const all = await gist.read(); const theirs = all[d.id]; if (!theirs || R.doc !== d) return;
+    const mine = ls.get("pos:" + d.id, null);
+    const me = (gist.cfg().device || defaultDevice());
+    if ((!mine || theirs.at > mine.at) && (theirs.b !== R.cur.b || theirs.s !== R.cur.s) && theirs.b < d.blocks.length) {
+      syncOffer = { b: theirs.b, s: theirs.s };
+      const where = d.blocks[theirs.b] ? d.blocks[theirs.b].pg : theirs.pg;
+      $("sync-go").textContent = "Continue from p. " + where + " (" + (theirs.device && theirs.device !== me ? theirs.device : "other device") + ", " + ago(theirs.at) + ")";
+      $("syncbar").hidden = false; updateDockHeight();
+    }
+    gist.lastOK = Date.now();
+  } catch (e) { if (e.status === 401) gist.lastErr = "GitHub didn't accept the token. It may have expired: make a new one and connect again."; }
 }
 
 /* ---------- document model ---------- */
@@ -449,6 +542,8 @@ async function openDoc(id) {
     say("Picked up where you left off on your other device (p. " + d.blocks[R.cur.b].pg + ").");
   }
   updateDock();
+  $("syncbar").hidden = true; syncOffer = null;
+  gistCheck(d);
 }
 function clampPos(p) {
   const n = R.doc.blocks.length; const b = Math.min(Math.max(0, p.b | 0), n - 1);
@@ -698,7 +793,9 @@ $("ch-page").addEventListener("click", () => {
   R.range = { from, to, label: "Page " + pg + " only" };
   play({ b: from, s: 0 });
 });
-$("range-x").addEventListener("click", () => { R.range = null; updateDock(); if (!R.playing) play(R.cur); });
+$("sync-go").addEventListener("click", () => { const p = syncOffer; $("syncbar").hidden = true; syncOffer = null; updateDockHeight(); if (p) { R.range = null; jump(p); savePos(R.doc.id, R.cur.b, R.cur.s, pct(), true); } });
+$("sync-x").addEventListener("click", () => { $("syncbar").hidden = true; syncOffer = null; updateDockHeight(); savePos(R.doc.id, R.cur.b, R.cur.s, pct(), true); });
+$("range-x").addEventListener("click",() => { R.range = null; updateDock(); if (!R.playing) play(R.cur); });
 
 /* keyboard (laptop) */
 addEventListener("keydown", (e) => {
@@ -807,9 +904,22 @@ function syncSettings() {
   $("row-voice").hidden = R.engine !== "device";
   sp.value = R.speed; $("awake").checked = ls.get("awake", false); $("follow").checked = R.follow;
   const th = ls.get("theme", ""); $("seg-theme").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === th)));
-  $("btn-rm").parentElement.hidden = !!d.sample && false;
+  $("gist-rows").hidden = IN_ARTIFACT;
+  const gc = gist.cfg();
+  $("gist-form").hidden = !!(gc && gc.id); $("gist-on").hidden = !(gc && gc.id);
+  if (gc && gc.id) $("gist-status").textContent = gist.lastErr || ("As “" + (gc.device || defaultDevice()) + "”. " + (gist.lastOK ? "Last synced " + ago(gist.lastOK) + "." : "Syncs when you pause or leave the app."));
+  else $("gist-device").value = defaultDevice();
   $("rm-sub").textContent = d.sample ? "Hides the sample from your library." : "Deletes the text and audio stored here. Your files in iCloud stay as they are.";
 }
+$("gist-connect").addEventListener("click", async () => {
+  const token = $("gist-token").value.trim(); const btn = $("gist-connect");
+  if (!token) { say("Paste the token from GitHub first."); return; }
+  btn.disabled = true; btn.textContent = "Connecting…";
+  try { await gist.connect(token, $("gist-device").value.trim()); $("gist-token").value = ""; say("Connected. Your place now syncs through GitHub."); if (R.doc) { savePos(R.doc.id, R.cur.b, R.cur.s, pct(), true); } }
+  catch (e) { say(e.status === 401 ? "GitHub didn't accept that token. Check that you copied all of it and that “gist” was ticked." : "Couldn't reach GitHub. Check your internet connection and try again."); }
+  btn.disabled = false; btn.textContent = "Connect"; syncSettings();
+});
+$("gist-off").addEventListener("click", () => { ls.set("gist", null); ls.set("gistDirty", {}); syncSettings(); say("Disconnected. The gist on GitHub is left as it is."); });
 $("seg-src").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
   const was = R.playing; if (was) pause();
@@ -840,7 +950,6 @@ loadLibrary();
 addEventListener("resize", updateDockHeight);
 })();
 </script>
-
 <script>
 if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 </script>
