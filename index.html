@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f4a8a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Reader">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
+</head>
+<body>
+<title>Listening Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column (~65ch) with a fixed listening dock at the bottom; library and reader are two views of one page. */
+:root{
+  --paper:#f6f7f9; --sheet:#ffffff; --ink:#1d2230; --ink-soft:#5b6273; --rule:#dde0e7;
+  --accent:#2f4a8a; --accent-ink:#ffffff; --marker:#ffe27a; --marker-soft:#fff6cc; --wash:#eef1f7;
+  --danger:#a33a2c;
+  --f-read:"Literata", Georgia, "Times New Roman", serif;
+  --f-ui:"Atkinson Hyperlegible", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --read-size:1.12rem; --dock-h:150px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#13151b; --sheet:#1b1e26; --ink:#e7e9ee; --ink-soft:#a0a6b4; --rule:#2c313d;
+  --accent:#9db4ff; --accent-ink:#0f1320; --marker:#5a4a12; --marker-soft:#2a2614; --wash:#222735; --danger:#ff8f7d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#13151b; --sheet:#1b1e26; --ink:#e7e9ee; --ink-soft:#a0a6b4; --rule:#2c313d;
+  --accent:#9db4ff; --accent-ink:#0f1320; --marker:#5a4a12; --marker-soft:#2a2614; --wash:#222735; --danger:#ff8f7d; color-scheme:dark}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:15px;-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.wrap{max-width:44rem;margin:0 auto;padding-inline:16px}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+
+/* ---------- Library ---------- */
+#library{padding-block:28px 60px}
+.lib-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lib-head h1{font-family:var(--f-read);font-weight:600;font-size:1.9rem;margin:.2rem 0 0;text-wrap:balance}
+.btn{display:inline-flex;align-items:center;gap:.45em;padding:.62em 1em;border-radius:999px;font-weight:700}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.quiet{background:var(--wash)}
+.btn.small{padding:.4em .8em;font-size:.88rem}
+.docs{display:grid;gap:10px;margin-top:22px}
+.doc{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:14px 16px;text-align:left;width:100%}
+.doc .t{font-family:var(--f-read);font-size:1.05rem;line-height:1.3;min-width:0}
+.doc .meta{grid-column:1/2;color:var(--ink-soft);font-size:.85rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.doc .pct{grid-row:1/3;grid-column:2;font-family:var(--f-mono);font-size:.85rem;color:var(--ink-soft);text-align:right}
+.bar{grid-column:1/3;height:3px;background:var(--wash);border-radius:2px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.chip{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.04em;padding:.15em .55em;border-radius:999px;background:var(--wash);color:var(--ink-soft)}
+.chip.ok{background:var(--marker-soft);color:var(--ink)}
+.chip.warn{color:var(--danger)}
+.how{margin-top:34px;border-top:1px solid var(--rule);padding-top:22px;line-height:1.55}
+.how h2{font-family:var(--f-read);font-size:1.2rem;font-weight:600;margin:0 0 .4rem}
+.how ol{padding-left:1.2rem;margin:.5rem 0}
+.how li{margin:.45rem 0}
+.cmd{display:flex;gap:8px;align-items:stretch;margin:.4rem 0}
+.cmd code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font-family:var(--f-mono);font-size:.8rem;background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:.55em .7em}
+.note{color:var(--ink-soft);font-size:.9rem}
+#msg{margin-top:14px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--dock-h) + 16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);padding:.6em 1em;border-radius:10px;font-size:.9rem;z-index:50;max-width:calc(100% - 32px)}
+#library .toast{bottom:24px}
+
+/* ---------- Reader ---------- */
+#reader{min-height:100%}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+.topbar .wrap{display:flex;align-items:center;gap:6px;height:52px}
+.icon{width:40px;height:40px;display:inline-grid;place-items:center;border-radius:10px;flex:none}
+.icon:hover{background:var(--wash)}
+.icon svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.topbar .title{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.95rem}
+#text{font-family:var(--f-read);font-size:var(--read-size);line-height:1.7;padding-block:26px calc(var(--dock-h) + 60px)}
+#text .blk{margin:0 0 1em;position:relative;border-radius:6px;transition:background-color .2s}
+#text .blk.q{margin-inline:1.2em;font-size:.94em;color:var(--ink-soft)}
+#text h2.blk,#text h3.blk,#text h4.blk{font-weight:600;line-height:1.3;text-wrap:balance;margin:1.6em 0 .6em}
+#text h2.blk{font-size:1.45em}
+#text h3.blk{font-size:1.18em}
+#text h4.blk{font-size:1.02em;font-style:italic}
+#text .pg{display:block;font-family:var(--f-mono);font-size:.7rem;color:var(--ink-soft);letter-spacing:.06em;margin:1.2em 0 .3em;border-top:1px dashed var(--rule);padding-top:.35em}
+.s{cursor:pointer;border-radius:3px;-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 .04em}
+.blk.cur{background:var(--marker-soft);box-shadow:0 0 0 .35em var(--marker-soft)}
+.s.on{background:var(--marker)}
+.s.sel{outline:2px solid var(--accent);outline-offset:1px}
+.endmark{text-align:center;color:var(--ink-soft);font-family:var(--f-mono);font-size:.75rem;padding:2em 0}
+
+/* Dock */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--sheet);border-top:1px solid var(--rule);padding-bottom:env(safe-area-inset-bottom,0px);box-shadow:0 -6px 24px rgba(0,0,0,.06)}
+.dock .wrap{padding-block:8px 10px;display:grid;gap:6px}
+.where{display:flex;justify-content:space-between;gap:10px;font-size:.8rem;color:var(--ink-soft);min-width:0}
+.where span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.where span:last-child{font-family:var(--f-mono);white-space:nowrap}
+.scrub{width:100%;accent-color:var(--accent);margin:0;height:22px}
+.transport{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.tbtn{display:grid;place-items:center;width:46px;height:46px;border-radius:12px;position:relative}
+.tbtn:hover{background:var(--wash)}
+.tbtn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tbtn small{position:absolute;bottom:2px;font-family:var(--f-mono);font-size:.55rem;color:var(--ink-soft)}
+.play{width:60px;height:60px;border-radius:50%;background:var(--accent);color:var(--accent-ink)}
+.play:hover{background:var(--accent)}
+.play svg{width:28px;height:28px;fill:currentColor;stroke:none}
+.speed{font-family:var(--f-mono);font-weight:500;font-size:.9rem;width:54px}
+.choices{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.choices .btn{font-size:.85rem;padding:.42em .8em}
+.range{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--ink)}
+.back-to{position:fixed;right:16px;bottom:calc(var(--dock-h) + 14px + env(safe-area-inset-bottom,0px));z-index:25;box-shadow:0 4px 14px rgba(0,0,0,.15)}
+
+/* Sheets */
+.scrim{position:fixed;inset:0;background:rgba(10,12,18,.35);z-index:40}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--sheet);border-radius:18px 18px 0 0;max-height:82%;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px)}
+.sheet header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px;border-bottom:1px solid var(--rule)}
+.sheet header b{font-size:1rem}
+.sheet .body{overflow:auto;padding:8px 16px 20px;-webkit-overflow-scrolling:touch}
+.sheet .inner{max-width:44rem;margin:0 auto;width:100%}
+.toc a{display:flex;gap:10px;justify-content:space-between;padding:.6em 0;border-bottom:1px solid var(--rule);color:var(--ink);text-decoration:none;font-family:var(--f-read)}
+.toc a span:last-child{font-family:var(--f-mono);font-size:.8rem;color:var(--ink-soft);flex:none}
+.toc a.l2{padding-left:1em}.toc a.l3{padding-left:2em;font-size:.95em}
+.toc a.here{font-weight:600}
+.goto{display:flex;gap:8px;align-items:center;margin:8px 0 12px}
+.goto input{width:7em;font:inherit;padding:.5em .7em;border-radius:10px;border:1px solid var(--rule);background:var(--paper);color:var(--ink)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:.8em 0;border-bottom:1px solid var(--rule)}
+.row label{font-weight:700}
+.row .sub{display:block;font-weight:400;color:var(--ink-soft);font-size:.85rem;margin-top:2px}
+.row select{max-width:60%;font:inherit;padding:.45em;border-radius:10px;border:1px solid var(--rule);background:var(--paper);color:var(--ink)}
+.seg{display:inline-flex;background:var(--wash);border-radius:999px;padding:3px}
+.seg button{padding:.35em .8em;border-radius:999px;font-size:.88rem}
+.seg button[aria-pressed="true"]{background:var(--sheet);box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:700}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;scroll-behavior:auto!important}}
+@media (min-width:760px){.sheet{left:50%;transform:translateX(-50%);width:min(44rem,100%);bottom:16px;border-radius:18px;max-height:75%}}
+</style>
+
+<div id="library" class="wrap">
+  <div class="lib-head">
+    <div>
+      <div class="eyebrow">Read along · listen · pick up where you left off</div>
+      <h1>Listening Reader</h1>
+    </div>
+    <label class="btn primary" for="file-in">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      Add files
+    </label>
+    <input id="file-in" type="file" multiple hidden>
+  </div>
+  <div id="msg" aria-live="polite"></div>
+  <div class="docs" id="docs"></div>
+
+  <section class="how">
+    <h2>Adding a paper or book</h2>
+    <ol>
+      <li>On your Mac, run <b>readalong.py</b> on the PDF. It writes a cleaned <code>.reader.json</code> next to it:
+        <div class="cmd"><code id="c1">python3 readalong.py "paper.pdf"</code><button class="btn small quiet" data-copy="c1">Copy</button></div>
+      </li>
+      <li>For the natural voice, add <code>--audio</code>. It also writes MP3s with the timing for the highlight:
+        <div class="cmd"><code id="c2">python3 readalong.py "paper.pdf" --audio</code><button class="btn small quiet" data-copy="c2">Copy</button></div>
+      </li>
+      <li>Tap <b>Add files</b> here and pick the <code>.reader.json</code>, plus the <code>.mp3</code> files if you made them. Select them together. If they're in iCloud Drive, you can add them on your phone and on your laptop.</li>
+    </ol>
+    <p class="note">Plain <code>.txt</code> files work too. Separate paragraphs with a blank line, start a heading line with #, and put a line like <code>Page 12</code> to set the page number.</p>
+    <p class="note">Files you add stay on this device, and so does your reading position. Nothing is uploaded anywhere. After the first visit the reader works fully offline. On iPhone, open it in Safari and use Share › Add to Home Screen.</p>
+  </section>
+</div>
+
+<div id="reader" hidden>
+  <div class="topbar"><div class="wrap">
+    <button class="icon" id="btn-back" aria-label="Back to library"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="title" id="r-title"></div>
+    <button class="icon" id="btn-toc" aria-label="Contents and pages"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></svg></button>
+    <button class="icon" id="btn-set" aria-label="Voice and text settings"><svg viewBox="0 0 24 24"><path d="M4 19l5-14h2l5 14M6.5 13h7"/><path d="M17 9h4M19 7v4"/></svg></button>
+  </div></div>
+  <div class="wrap"><article id="text" lang="en"></article></div>
+
+  <button class="btn primary small back-to" id="btn-backto" hidden>Back to reading position</button>
+
+  <div class="dock" id="dock"><div class="wrap">
+    <div class="choices" id="choices" hidden>
+      <button class="btn primary" id="ch-from">▶ Read from here</button>
+      <button class="btn quiet" id="ch-para">This paragraph</button>
+      <button class="btn quiet" id="ch-page">This page</button>
+      <button class="btn quiet" id="ch-x" aria-label="Close">✕</button>
+    </div>
+    <div class="range" id="rangebar" hidden><span class="chip ok" id="range-label"></span><button class="btn small quiet" id="range-x">Read to the end instead</button></div>
+    <div class="where"><span id="w-sec"></span><span id="w-pos"></span></div>
+    <input class="scrub" id="scrub" type="range" min="0" max="1000" value="0" aria-label="Position in document">
+    <div class="transport">
+      <button class="tbtn" id="t-pp" aria-label="Previous paragraph"><svg viewBox="0 0 24 24"><path d="M6 5v14M18 6l-8 6 8 6z"/></svg><small>¶</small></button>
+      <button class="tbtn" id="t-ps" aria-label="Previous sentence"><svg viewBox="0 0 24 24"><path d="M10 7l-5 5 5 5M5 12h9a5 5 0 0 1 5 5"/></svg><small>sent.</small></button>
+      <button class="tbtn play" id="t-play" aria-label="Play"><svg viewBox="0 0 24 24" id="play-ic"><path d="M8 5l12 7-12 7z"/></svg></button>
+      <button class="tbtn" id="t-ns" aria-label="Next sentence"><svg viewBox="0 0 24 24"><path d="M14 7l5 5-5 5M19 12h-9a5 5 0 0 0-5 5"/></svg><small>sent.</small></button>
+      <button class="tbtn" id="t-np" aria-label="Next paragraph"><svg viewBox="0 0 24 24"><path d="M18 5v14M6 6l8 6-8 6z"/></svg><small>¶</small></button>
+      <button class="tbtn speed" id="t-speed" aria-label="Speed">1×</button>
+    </div>
+  </div></div>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet-toc" hidden role="dialog" aria-label="Contents">
+  <header><b>Contents</b><button class="btn small quiet" data-close>Done</button></header>
+  <div class="body"><div class="inner">
+    <div class="goto"><label for="goto-in">Go to page</label><input id="goto-in" inputmode="numeric" placeholder="e.g. 12"><button class="btn small primary" id="goto-go">Go</button></div>
+    <div class="note" id="toc-left"></div>
+    <nav class="toc" id="toc"></nav>
+  </div></div>
+</div>
+<div class="sheet" id="sheet-set" hidden role="dialog" aria-label="Settings">
+  <header><b>Voice and text</b><button class="btn small quiet" data-close>Done</button></header>
+  <div class="body"><div class="inner">
+    <div class="row"><label>Voice source<span class="sub" id="src-sub"></span></label>
+      <div class="seg" id="seg-src"><button data-v="audio">Natural MP3</button><button data-v="device">Device voice</button></div></div>
+    <div class="row" id="row-voice"><label for="voice-sel">Device voice<span class="sub">On iPhone: Settings › Accessibility › Spoken Content › Voices. Download an “Enhanced” or “Premium” voice for better sound.</span></label>
+      <select id="voice-sel"></select></div>
+    <div class="row"><label for="speed-sel">Speed</label><select id="speed-sel"></select></div>
+    <div class="row"><label>Text size</label><div class="seg"><button id="fs-minus" aria-label="Smaller text">A−</button><button id="fs-plus" aria-label="Larger text">A+</button></div></div>
+    <div class="row"><label for="awake">Keep screen on while listening<span class="sub">The device voice stops when the screen locks. Natural MP3 audio keeps playing.</span></label><input type="checkbox" id="awake"></div>
+    <div class="row"><label for="follow">Scroll along with the voice</label><input type="checkbox" id="follow" checked></div>
+    <div class="row"><label>Theme</label><div class="seg" id="seg-theme"><button data-v="">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+    <div class="row"><label>Remove from this device<span class="sub" id="rm-sub">Deletes the text and audio stored here. Your files in iCloud stay as they are.</span></label><button class="btn small quiet" id="btn-rm">Remove</button></div>
+  </div></div>
+</div>
+
+<script type="application/json" id="sample-doc">{"format":"listening-reader","version":1,"id":"sample-summerfield-2026","title":"The recipe for intelligence in natural and artificial systems","source":"Summerfield & Stachenfeld, Neuron 114 (2026). Open access, CC BY 4.0","blocks":[{"k":"h","lvl":1,"pg":"3569","s":["The recipe for intelligence in natural and artificial systems"]},{"k":"h","lvl":3,"pg":"3569","s":["SUMMARY"]},{"k":"p","pg":"3569","s":["Ten years ago, two landmark papers discussed open problems in AI research from the standpoint of neuro science and cognitive science.","Today, many of these problems have been solved, mostly without direct inspi ration from the study of the human brain.","In this paper, we consider what is still shared between the twin endeavors of understanding natural brains and building artificial ones.","We argue that, as well as understand ing the ‘‘ingredients’’ of intelligence (its component parts), both fields are now coming to grasp the ‘‘recipe’’ for intelligence (how they fit together).","Surprisingly, this recipe has many parallels in biological and artificial systems.","Despite rapid progress in AI research, there are many computational problems that remain un solved.","We discuss how these problems may be addressed in natural intelligence."]},{"k":"h","lvl":2,"pg":"3569","s":["A LOOK BACK: NEUROSCIENCE AND AI IN 2016"]},{"k":"p","pg":"3569","s":["A decade ago, two landmark papers were published at the crossroads of neuroscience and AI research.","It was a heady time for both researchers interested in building AI and those seeking to understand biological brains.","By 2016, deep neural networks had shown striking success in benchmark domains such as natural image recognition, machine translation, video, card, and board games, and even TV gameshow quizzes.","This hinted at a route to machine intelligence that combined large-scale neural networks with large-volume naturalistic training data.","In tandem, evidence was starting to emerge that deep networks capable of striking behaviors might also serve as plausible models of biological brains, or at least of the primate neocortex.","Discussion of generally intelligent machines had begun to seep out of fringe techno-optimist communities and into the academic mainstream.","However, the idea that a machine could ever match the power of biological brains still seemed quite quixotic.","The two landmark papers cautioned that there was a long way to go. ‘‘Building human-level general AI [...] is a daunting task, because the search space of possible solutions is vast and likely only very sparsely populated,’’ wrote a team from Google DeepMind in a paper published in this journal.","In a similarly cautious vein, authors from MIT wrote, ‘‘We should [..] be mindful of what AI has achieved and what it has not.","Although the pace of progress has been impressive, natural intelligence is still by far the best example of intelligence.’’"]},{"k":"p","pg":"3569","s":["Both papers advised that neuroscience and cognitive science offered a useful roadmap for building AI.","Despite differences of emphasis, the two papers cited an overlapping list of unsolved challenges for AI research, drawing on themes that were familiar from the study of natural brains and minds.",["To emulate the power of human intelligence, they argued, future AI systems would need to form neural representations that supported strong forms of generalization and transfer—including the ability to compose new ideas from existing building blocks—instead of coming a cropper whenever faced with minor departures from their training distribution.","To emulate the power of human intelligence, they argued, future AI systems would need to form neural representations that supported strong forms of generalization and transfer, including the ability to compose new ideas from existing building blocks, instead of coming a cropper whenever faced with minor departures from their training distribution."],["They would need to evolve beyond ‘‘pattern recognition’’ systems and learn causal models of physical and psychological processes in the natural world—for example, how objects move and how people form beliefs.","They would need to evolve beyond ‘‘pattern recognition’’ systems and learn causal models of physical and psychological processes in the natural world, for example, how objects move and how people form beliefs."],"They would need to employ modular memory and attention systems over multiple timescales and support reasoning, planning, and imagination.","The paper from the DeepMind team was, understandably, more bullish about deep learning, whereas the MIT team remained largely wedded to a nativist tradition, arguing that deep networks were overly data hungry and needed stronger inductive biases.","Nevertheless, the two groups agreed that increased sample efficiency, and the consequential ability to learn and act on the fly, was a non-negotiable ingredient of intelligence that was yet to be realized in machines."]},{"k":"p","pg":"3569","s":["In this review article, we discuss what the last decade of AI research means for psychology and neuroscience.","From the standpoint of 2026, the brain- and cognition-inspired roadmap proposed in these two papers might seem a little quaint.","Today’s multi-trillion-parameter foundation models have ridden roughshod over many of the unsolved challenges highlighted in these earlier papers.","Frontier AI models can systematically compose new ideas and make wholly novel inferences, pick up new skills or knowledge on the fly, retrieve vast swathes of knowledge, flexibly solve problems, and intuitively grasp the intricacies of the physical and psychological world.",["The backbone for these achievements is mastery of a cognitive feat that both papers were strangely shy of discussing—the ability to generate coherently structured outputs in natural language and other formal symbolic systems, such as mathematical notation and computer code.","The backbone for these achievements is mastery of a cognitive feat that both papers were strangely shy of discussing, the ability to generate coherently structured outputs in natural language and other formal symbolic systems, such as mathematical notation and computer code."],"This has turned today’s AI models into remarkable tools for information retrieval, content generation, writing and coding assistance, problem solving, workflow orchestration, and robotic control.","It has also given impetus to a popular moral that ever-growing model scale, not brain-inspired engineering, is the key ingredient that underpins the success of AI systems.","This was the message of a widely cited blog post arguing that the ‘‘bitter lesson’’ of AI research was that the field marched onward in tandem with Moore’s law, as computers became faster and data more abundant, and not through the discovery of clever inductive biases.","Did the papers by the DeepMind and MIT groups thus fail the test of time?"]},{"k":"p","pg":"3570","s":[["Here, we argue that they did not—at least not entirely.","Here, we argue that they did not, at least not entirely."],"Both papers were instrumental in defining the unsolved puzzle pieces for building intelligent machines.","Many of these puzzles now have solutions, in the form of new architectural and algorithmic innovations.","Although the answers were for the most part not directly inspired by biology, many are curiously synergetic with classical ideas from psychology and neuroscience about how to build a brain.","In turn, this emerging picture of the building blocks of highly capable AI systems has shed new light on the computational processes that may power natural general intelligence."]},{"k":"h","lvl":2,"pg":"3570","s":["OUTLINE OF THIS PAPER"]},{"k":"p","pg":"3570","s":["In the sections below, we point to four major insights from AI research over the last decade and unpack their relevance for the understanding of natural intelligence:"]},{"k":"p","pg":"3570","s":["1. Large-scale generative models can acquire rich conceptual knowledge of the world from symbolic inputs (language and code) alone.",["2. Fast associative memory processes are essential for acquiring representations that underlie compositional and relational inferences—working out ‘‘what goes with what.’’","2. Fast associative memory processes are essential for acquiring representations that underlie compositional and relational inferences, working out ‘‘what goes with what.’’"],"3. Sample-efficient learning is possible by training systems to ‘‘learn how to learn,’’ as long as neural systems explicitly represent the embedding space in which experiences are related.","4. Successful planning and reasoning become much easier in systems with rich semantic knowledge acquired through extensive precomputation."]},{"k":"p","pg":"3570","s":["Nevertheless, many unsolved challenges remain.","In a final section, we discuss major outstanding issues and propose insights from psychology and neuroscience that may be relevant.","We focus on three shortcomings of modern AI systems:"]},{"k":"p","pg":"3570","s":["5. Current AI systems lack the ability to consolidate ongoing experience into long-term memory because their memory modules are poorly integrated.","6. Metacognition and goal-directed behavior is unreliable in today’s AI systems because they lack mechanisms for monitoring and self-modeling.","7. Despite their superlative capacity for formal reasoning in verifiable domains, current models still struggle in openended and uncertain environments."]},{"k":"p","pg":"3570","s":["We also acknowledge the possibility that the current paradigm may not be the final waystation en route to artificial general intelligence.",["Nevertheless, whereas both original papers emphasized the ‘‘ingredients’’ needed to build intelligence, we argue that both fields are starting to grasp the ‘‘recipe’’ for intelligence— how component algorithms, architectures, and cost functions fit together to support intelligence in natural and artificial systems.","Nevertheless, whereas both original papers emphasized the ‘‘ingredients’’ needed to build intelligence, we argue that both fields are starting to grasp the ‘‘recipe’’ for intelligence, how component algorithms, architectures, and cost functions fit together to support intelligence in natural and artificial systems."]]},{"k":"h","lvl":3,"pg":"3570","s":["PART 1: WHAT WE HAVE LEARNED IN THE LAST DECADE"]},{"k":"p","pg":"3570","s":["So much has changed since 2016; it is impossible to capture it all in a single article.","In what follows, we try to give an overview of the most important advances and their relevance for cognitive science and neuroscience."]},{"k":"h","lvl":3,"pg":"3570","s":["Large-scale generative models as theories of the brain"]},{"k":"p","pg":"3570","s":["If we look back to 2016, the most promising paradigm in AI was deep reinforcement learning (RL), which had formed the bedrock of early successes in Atari and Go.","The RL paradigm assumes that some environmental states (such as the taste of an apple) emit special signals called rewards, and agents acquire intelligence by learning to maximize their expected reward.","There are obvious reasons to consider RL a theory of the brain.","It draws heavily on psychological theories of motivated behavior and has been successful at explaining neural activity, especially in subcortical circuits.","Despite these synergies, using RL as a framework for understanding biological intelligence obliges us to overlook the problem that, in the natural world, its basic assumption does not hold.",["Rewards are not emitted by the environment (or even by the body) but are instead computed within the agent’s brain (e.g., the taste of an apple is a sensory signal like any other, and it is your brain that decides it is delicious).","Rewards are not emitted by the environment (or even by the body) but are instead computed within the agent’s brain (for example, the taste of an apple is a sensory signal like any other, and it is your brain that decides it is delicious)."]]},{"k":"p","pg":"3570","s":["Nevertheless, in their paper, the DeepMind team leaned heavily on RL as a linking function between biological and artificial intelligence."]},{"k":"p","pg":"3570","s":["The MIT team were influenced by the popular view that complex human behaviors are implemented by mental programs that involved discrete operations.","This was a familiar posture in cognitive science, which had long argued that intelligence involved a symbolic language of thought.","Proponents of this position, however, had always struggled to explain how symbolic processing was acquired in the first place.",["The canonical (nativist) response—that it is inherited—displaces rather than solves this conundrum, as evolution itself relies on a different (but less efficient) form of learning.","The canonical (nativist) response, that it is inherited, displaces rather than solves this conundrum, as evolution itself relies on a different (but less efficient) form of learning."],"This had spawned a long and involved debate between symbolists and connectionists that has still not entirely faded.","In their paper, the MIT team took a compromise position, advocating for hybrid ‘‘neurosymbolic’’ models, which blend discrete and connectionist approaches."]},{"k":"p","pg":"3570","s":["However, the AI breakthrough, when it came, was not inspired by either RL or symbolic cognition.","In 2017, hot on the heels of the two review articles, a new architecture for sequence modeling was proposed, called the transformer.","Sequence modeling is a core aspect of the natural language processing (NLP) challenge of generating a plausible next word xn+1 in a sentence X = {x1; x2; x3...xn}.",["The transformer took a radical new approach to this problem, whereby chunks of data are ingested in a parallel, feedforward fashion, and the association strength between each input token (e.g., a word) and every other token is instantaneously computed in a giant computational graph (Figures 1A and 1B).","The transformer took a radical new approach to this problem, whereby chunks of data are ingested in a parallel, feedforward fashion, and the association strength between each input token (for example, a word) and every other token is instantaneously computed in a giant computational graph."],"Being highly scalable, the transformer soon became the core building block of a new class of generative model called a large language model (LLM).","An early milestone was GPT-3, which captured the world’s attention in 2020 for its ability to answer general knowledge questions and write long and (mostly) coherent passages of text.","Today, trillion-parameter transformer networks excel at tasks involving natural language, coding, math, and reasoning, as well as supporting multimodal content generation, digital tool use, and robotics."]},{"k":"p","pg":"3571","s":["LLMs are generative models, which means that they learn by predicting new samples from their input distribution.","The idea that this might describe how the brain works was a rather niche position in 2016.","The ‘‘active inference’’ framework proposed that the brain had evolved to infer the latent causes of sensation (recognition) and make predictions (generation) and that ‘‘reward’’ was really an epiphenomenon.","There were suggestions that sensory systems might compute latent variables via the same principles as deep generative models.","The MIT group had advocated for probabilistic inference as the fundamental computational engine for intelligence and provided proof-of-concept demonstrations of the power of probabilistic programs for learning causal models of the world and solving challenges such as recognizing objects and handwritten digits."]},{"k":"p","pg":"3571","s":["However, at the time, the idea that making and revising predictions about data might offer a universal solution for everything from generating valid sentences to winning at poker was not universally accepted."]},{"k":"p","pg":"3571","s":["The arrival of LLMs taught us just how powerful generative models could be when scaled to billions of parameters.","This has revived their cachet among neuroscientists.","One example comes from a subfield of neuroscience that seeks to explain neural signals in the sensory neocortex as linear mappings from the activity patterns of task-optimized deep networks.","In its first flowering a decade ago, it looked to supervised learning in convolutional neural networks to explain visual cognition.","However, recent approaches have relied on generative models, including variational autoencoders, contrastive models, and LLMs themselves as a tool of choice.","Transformer-based models have also been proposed as psycholinguistic theories and even used as foundation models for cognition.","After decades of being derided as implausible and esoteric, predictive models are back in fashion."]},{"k":"p","pg":"3572","s":["The success of LLMs has prompted neuroscientists to revisit other traditional pieties about computation and the brain.","One thing we have learned is that, with sufficient data, weakly structured learning systems can learn highly structured behaviors.","A neural network is such a system, with millions of interchangeable units and connections initialized at random, yet we now know that it can solve problems involving highly systematic operations, such as the correct use of nouns and verbs, long division, and logical syllogisms.","Early neural networks showed hints of being able to learn symbolic tasks such as writing Python code, but the triumph of LLMs at math, coding, and reasoning has effectively laid to rest the long-running debate between symbolist and connectionist camps in cognitive science."]},{"k":"p","pg":"3572","s":["Another surprising insight was just how much world knowledge is encoded in natural language.",["There were early hints that neural networks trained to predict the next word on large text-based corpora could represent high-level information about how the world is organized (Figures 1C and 1D).","There were early hints that neural networks trained to predict the next word on large text-based corpora could represent high-level information about how the world is organized."],"However, the dominant view, from philosophy to neuroscience, was that sensory experience and embodied action were non-negotiable requirements for an AI system to understand the natural world."]},{"k":"p","pg":"3572","s":["The DeepMind team bet on training deep networks to reproduce the verbal instructions that humans gave an agent navigating a 3D visual playroom environment.","However, early LLMs dis played some striking knowledge of a physical world they had never even seen.","For example, transformers trained on text alone could infer the structure of color space and generalize an understanding of Euclidean geometry to unseen concepts.",["After reading a description of the layout of a house, GPT-4 was able to write a Python program that correctly visualized the map (Figure 2A).","After reading a description of the layout of a house, GPT-4 was able to write a Python program that correctly visualized the map."],"Critics were quick to point out that LLMs (and vision language models, or VLMs, that had also been jointly trained on images and their text descriptions) lagged behind humans on tests of real-world understanding, such as predicting whether a tower of blocks would fall over or navigating through a maze to a goal.","Indeed, the idea that LLMs are fundamentally flawed because they lack a ‘‘world model’’ continues to carry currency.","However, the view that models can learn meaning without reference to the physical world has become a popular, if not prevailing, view."]},{"k":"p","pg":"3572","s":["Despite astonishing recent progress in AI research, not everyone has embraced the view that transformer-based generative models are a promising paradigm for intelligence.","Many still claim that AI systems cannot ‘‘really’’ be intelligent if they are merely predicting tokens.","Indeed, it is true that vanilla LLMs have several shortcomings that limit their readiness for universal, plug-and-play rollout.","Model responses are not always reliable, content generation can be stereotyped and homogeneous, beliefs are often expressed overconfidently, reasoning can be faulty, and models often struggle to remain true to their goals over the long term.","In fact, as we discuss below, many of the inductive biases that were subsequently developed in AI research have served to paper over these cracks in basic LLM abilities.","For example, naive transformers struggle with elaborate arithmetic calculations, but when equipped with temporally extended cognition, access to external tools, and a means to verify solutions during training (with RL), they can go on to almost win Math Olympiads and solve Erd}os Problems."]},{"k":"h","lvl":3,"pg":"3573","s":["Fast associative processes for relational inference"]},{"k":"p","pg":"3573","s":[["It is widely stated that the key to intelligence is relational inference—the ability to learn and exploit abstract patterns in data.","It is widely stated that the key to intelligence is relational inference, the ability to learn and exploit abstract patterns in data."],["In psychology, analogical puzzles such as Raven’s Progressive Matrices are the backbone of psychometric testing (Figure 2B).","In psychology, analogical puzzles such as Raven’s Progressive Matrices are the backbone of psychometric testing."],"Neuroscientists have long searched for neurons that code for abstract concepts in a way that is invariant to their surface properties.","In machine learning, the ability to transfer knowledge to out-of-distribution tasks with similar structure is a prized success metric.","This perspective was central to both review articles, which argued that future AI systems would need to learn generalizable abstractions and solve novel relational reasoning problems in the way that humans can."]},{"k":"p","pg":"3573","s":["Despite this enjoinder, we do not know how humans and other animals learn about the relational structure of the world.","The brain regions most commonly implicated are the prefrontal cortex (PFC) and the medial temporal lobe (MTL), including the hippocampus.","Both contain neurons that code for rich abstractions.","For example, neurons in the human MTL respond to famous individuals or buildings but are invariant to modality, and cells in the macaque hippocampus code for the spatial layout of an environment, irrespective of the landmarks present, or signal a relational ‘‘map’’ of values in a task.","In the PFC, neurons code for the abstract rules that govern a task and fire to movement sequence archetypes independent of the actions required.","However, the computations in mammalian MTL and PFC are quite different and support distinct types of memory.","The MTL is widely thought to associate the rich contextual features of a memory via Hebbian learning.","This makes it crucial for laying down durable traces in an episodic store.","By contrast, in the PFC, each neural state excites the next in a recurrent temporal chain.","This allows it to integrate information and maintain latent states over a short delay period, making it vital for working memory."]},{"k":"p","pg":"3573","s":["A decade ago, state-of-the-art AI models were recurrent neural networks (RNNs) with learnable gates.","As hypothesized for the PFC, RNNs contain trainable parameters that map past onto current latent states, dictating how information is maintained, transformed, or discarded at each point in time.","When combined with RL, systems based on RNNs led the field on benchmark challenges involving video games."]},{"k":"p","pg":"3573","s":["RNN-based sequence-to-sequence models were used to model language and images for machine translation, language modeling, and image captioning.","However, when asked to generate long passages of text, these models produced outputs that were superficially plausible, but the overall narrative was disappointingly incoherent."]},{"k":"p","pg":"3573","s":[["Transformers dispense with recurrence and model sequences in a wholly parallel, feedforward fashion (Figure 2C, left).","Transformers dispense with recurrence and model sequences in a wholly parallel, feedforward fashion."],"Inputs X are projected into a latent ‘‘value’’ space via a set of weights Wv.","However, additional trainable weights Wk and Wq map each token xi onto an indexable address (a ‘‘key’’ ki) and a retrieval cue (a ‘‘query’’ qi).",["For each token xi, this allows values vj to be retrieved in proportion to how well the query qi matches the key kj for all other tokens xj, according to a similarity kernel (e.g., a softmax function).","For each token xi, this allows values vj to be retrieved in proportion to how well the query qi matches the key kj for all other tokens xj, according to a similarity kernel (for example, a softmax function)."],["Thus, this ‘‘self-attention’’ process allows the transformer to learn to encode relations—how each token in a sequence relates to every other and how these relationships determine future predictions.","Thus, this ‘‘self-attention’’ process allows the transformer to learn to encode relations, how each token in a sequence relates to every other and how these relationships determine future predictions."],"Representing tokens in a graph, rather than in a chain, turns out to be a crucial ingredient for modeling sentences.","However, as transformers scale to hundreds of billions of parameters, and their context window (the length of X) grows to millions of tokens, they form a computational skyscraper that takes relational inference to new heights.","Superlative scale allows LLMs to compute relations not just between words in a sentence or statements in a paragraph but also between the high-level narratives, arguments, or dependencies that exist across very long passages of text or code.","This allows them to abstract over details and learn to predict outputs based on the most general and high-level structure in their input data."]},{"k":"p","pg":"3573","s":[["The magic mix of self-attention and scale has allowed LLMs to learn the sorts of abstractions that had eluded an earlier generation of deep networks (Figure 2C).","The magic mix of self-attention and scale has allowed LLMs to learn the sorts of abstractions that had eluded an earlier generation of deep networks."],"For example, using interpretability methods, GPT-2 was found to contain neurons that coded for linguistic concepts such as ‘‘verbs in the gerund form,’’ ‘‘female names,’’ or ‘‘words related to money.’’",["When applied to image generation and captioning, a transformer-based model called Contrastive Language-Image Pretraining (CLIP) was found to contain units coding for multimodal semantic abstractions such as ‘‘Christmas’’ or ‘‘West Africa’’—the AI equivalent of ‘‘concept neurons’’ in human MTL.","When applied to image generation and captioning, a transformer-based model called Contrastive Language-Image Pretraining (CLIP) was found to contain units coding for multimodal semantic abstractions such as ‘‘Christmas’’ or ‘‘West Africa’’, the AI equivalent of ‘‘concept neurons’’ in human MTL."],"Researchers subsequently learned how to target concepts encoded in LLMs with techniques analogous to invasive brain stimulation.","This allowed them to create a version of Claude (from Anthropic) that was obsessed with the Golden Gate Bridge and would bring it up in every conversation."]},{"k":"p","pg":"3573","s":["Transformers are peculiarly effective at sequence modeling because parallel processing allows relations between each and every item to be computed instantaneously.","However, in the natural world, time has the inconvenient property of being onedimensional and irreversible, obliging animals to process sensory inputs one-by-one.","In some ways, jettisoning the RNN in favor of self-attention is a retrograde step for biological realism, and a significant departure from attempts to learn about intelligent computation from the biological brain."]},{"k":"p","pg":"3573","s":["Nevertheless, the transformer draws on computational principles with deep roots in psychology and neuroscience.","Instead of recurrent memory, it uses fast associative learning to encode the past in a way that predicts the future.","In psychology, this is called ‘‘episodic’’ memory, which (as in the transformer) has typically been modeled as an associative process that relies on the outer product of two sparse vectors encoding features of a memory.","This computational scheme allows memories to be retrieved from noisy or partial inputs (‘‘pattern completion’’), especially when the retrieval process itself is iterative and governed by attractor dynamics.","In deep learning models, a rapid associative encoding step has long been proposed to help preserve memories against blurring by subsequent parameter tuning, and neuroscientists have proposed that the fast step occurs in the hippocampus, complementing slower learning in the neocortex.","A natural implementational scheme is Hebbian learning, variants of which allow neural feature selectivity to emerge after a single experience.","Softmax normalization in the transformer even confers sparsity, a capacity-enhancing transform thought to precede autoencoding in the MTL."]},{"k":"p","pg":"3574","s":["Thus, although the transformer cannot offer a complete model of biological computation, it relies on many of the principles of associative memory in the mammalian brain."]},{"k":"p","pg":"3574","s":["As the brain is bound by time’s arrow, it needs recurrent computation to make sure that the present moment is composed of the recent past.","Indeed, numerous recording studies have shown that the geometry and dynamics of neural population activity during memory and inference tasks can be modeled with RNNs.",["Recurrence allows multiple features of the past to linger into the present (e.g., maintaining a list in active memory).","Recurrence allows multiple features of the past to linger into the present (for example, maintaining a list in active memory)."],["This may serve as a ‘‘buffer,’’ allowing fast associative processes in MTL to compute relations among items (e.g., knowledge of who likes whom).","This may serve as a ‘‘buffer,’’ allowing fast associative processes in MTL to compute relations among items (for example, knowledge of who likes whom)."],"The brain employs other mechanisms to bring the past into the present for potential associative processing, such as experience-dependent replay, which may itself play an organizational role in memory.","Recent work has also shown that PFC neurons learn to code for current and proximal states in tandem, encoding an entire sweep of future states at once.","Thus, although the transformer ‘‘cheats time’’ by processing its context in parallel, the computational principles on which it relies may be recreated in the brain in the form of highly scalable associative memory circuits."]},{"k":"h","lvl":3,"pg":"3574","s":["Acquiring new knowledge on the fly"]},{"k":"p","pg":"3574","s":["A common critique of deep networks circa 2016 was their limited flexibility.","Humans can grasp the rules of a new card game, make sense of a foreign sentence, or write a script in computer code.","This often involves picking up new skills on the fly, applying existing rules to unseen data, or combining familiar procedures to solve a novel problem.","These capacities have traditionally been thought to require the encoding, composition, and manipulation of symbols.","A decade ago, this view seemed vindicated by the failure of neural networks (that learn incrementally via slow weight updates) to demonstrate this sort of on-the-fly learning.","It is still commonly lamented that neural networks are terribly sample inefficient and cannot match human versatility when it comes to learning new tasks.","The success of the transformer, however, has offered us fresh ideas about how biological systems might deal flexibly with novelty."]},{"k":"p","pg":"3574","s":["The secret is that, given scale and heterogeneous training, Wq and Wk can be adjusted so that self-attention ‘‘learns how to learn’’ within its inputs (called ‘‘in-context learning’’ or ICL; see Figure 3A).","Like other neural networks, a transformer can memorize specifics via weight updates: for example (if planning a dinner party), that Alice likes to sit next to Charlie rather than Bob.",["However, after diverse experience, transformer networks can learn more general principles—that young people prefer to sit together or that conservatives and liberals rarely mix.","However, after diverse experience, transformer networks can learn more general principles, that young people prefer to sit together or that conservatives and liberals rarely mix."],"Faced with entirely new data, the transformer can apply these principles as if operating a mental program to deal with previously unseen guests of different ages and political persuasions.","This can occur ‘‘on the fly’’ and without any weight updates, mirroring how humans pick up new ideas from just a few experiences.","Transformers trade off in-weight and in-context learning in ways that are reminiscent of human memorization and generalization."]},{"k":"p","pg":"3574","s":["ICL is not unique to transformers.","It is closely related to meta-learning in RNNs, whereby models learn generalizable patterns among diverse sequences of stimuli, actions, and outcomes and eventually converge to minima in weight space that allow on-the-fly solution discovery within their recurrent dynamics.","This has been proposed as a model of the PFC, and deep meta-RL systems behave like monkeys and humans on tasks involving multi-step inference, retrospective revaluation, meta-control, and learning set.","However, there is no doubt that self-attention is well suited to ICL, especially when training data is formatted such that parallel information is presented in a common template form, akin to an analogy."]},{"k":"p","pg":"3574","s":["When exposed to large quantities of relational data, transformers can learn generalizable syntactic rules in natural language, such as the agreement between direct objects and verbs or possessive pronouns and their matching noun phrases, and these are encoded in a segregable fashion in the attention heads of transformer models.","This explains how transformers can master the infinite variety of natural language without ever being taught the rules of syntax, a feat that computational linguists had long thought would be impossible."]},{"k":"p","pg":"3574","s":["Over the last decade, neuroscientists have also devoted increased attention to understanding how animals learn generalizable rules.","The central challenge is the same in vivo as in silico.","If we simply memorize how Alice, Bob, and Charlie are related, we will not be able to generalize relational knowledge to new situations.",["Instead, we need to grasp that, for any set of items x, y, and z, the relations {x →y} and {y →z} constrain the possibilities for {x →z}.","Instead, we need to grasp that, for any set of items x, y, and z, the relations {x to y} and {y to z} constrain the possibilities for {x to z}."],"Building on earlier thinking in cognitive science, a major idea that has emerged over the past decade is that neurons may explicitly encode positions in the embedding space in which stimuli and tasks reside.",["Inputs are related by virtue of how they are ‘‘embedded’’ in a manifold whose axes encode dimensions of potential similarity, such as that given by the physical geometry of the world (here vs. there), time (now vs. later), observable features (big and red; small and blue), or a latent property (nephew or aunt).","Inputs are related by virtue of how they are ‘‘embedded’’ in a manifold whose axes encode dimensions of potential similarity, such as that given by the physical geometry of the world (here versus there), time (now versus later), observable features (big and red; small and blue), or a latent property (nephew or aunt)."],["Neurons that signal how the similarity space itself is organized allow us to compute how examples {x →y} and {y →z} constrain responses to the ‘‘zero-shot’’ query {x →z}.","Neurons that signal how the similarity space itself is organized allow us to compute how examples {x to y} and {y to z} constrain responses to the ‘‘zero-shot’’ query {x to z}."],"For example, the geometry of physical space in the natural world is Euclidean and low dimensional, so you know that if Xavier is next to Yolanda and Yolanda to Zac, then Xavier and Zac cannot be too far apart.",["Importantly, you can make this inference instantly without any prior learning about the people concerned—you have ‘‘learned how to learn’’ about how x and z are related from other contextual information.","Importantly, you can make this inference instantly without any prior learning about the people concerned, you have ‘‘learned how to learn’’ about how x and z are related from other contextual information."]]},{"k":"p","pg":"3574","s":["An example cell type that codes for the embedding space itself (rather than the stimuli that populate that space) is found in the macaque dorsal stream.",["There, neurons have been observed to signal the number of items that should be remembered across a delay, irrespective of their physical form or modality (dots vs. flashes).","There, neurons have been observed to signal the number of items that should be remembered across a delay, irrespective of their physical form or modality (dots versus flashes)."],["More generally, the parietal cortex is a good candidate for encoding the structure of one-dimensional or ‘‘magnitude-like’’ embedding spaces in a way that underpins our knowledge of transitive relations (if x > y and y > z then x > z), accounts for our tendency to overgeneralize one-dimensional axes (e.g., to assume that ‘‘bigger’’ is ‘‘better’’), and supports simple arithmetic calculation, which is impaired after parietal damage.","More generally, the parietal cortex is a good candidate for encoding the structure of one-dimensional or ‘‘magnitude-like’’ embedding spaces in a way that underpins our knowledge of transitive relations (if x > y and y > z then x > z), accounts for our tendency to overgeneralize one-dimensional axes (for example, to assume that ‘‘bigger’’ is ‘‘better’’), and supports simple arithmetic calculation, which is impaired after parietal damage."]]},{"k":"p","pg":"3575","s":["Another celebrated example is the grid cell, found in the medial entorhinal cortex (mERC), which encodes periodically recurring positions on a 2D manifold (with the quirk that it is circularly wrapped into a toroidal form).","This resembles how the coordinate grid lines on a map signal how Cartesian space is arranged, except in the mERC the symmetry is sixfold (hexagonal) rather than fourfold (quadrilateral).","Unlike its Nobel Prize cowinner, the hippocampal place cell, grid cells do not remap in novel environments and thus give the animal a consistent sense of how allocentric space is organized, irrespective of which landmarks it contains.","This is the sort of representation that would allow a rodent to infer that by running cheekily all the way around the edge of the dinner table, it would eventually get back to the place where it started (known as ‘‘path integration’’).","Similar periodic, hexagonal patterns of activity have even been (indirectly) observed in the medial PFC when people navigate more abstract 2D spaces, defined by continuously varying sensory features or latent values.","Thus, the brain seems to explicitly encode not just the contents of experience but also the structure of the embedding space in which experience occurs, allowing it to make accurate predictions about new experiences that conform to this structure."]},{"k":"p","pg":"3575","s":["Transformers are naively invariant to permutation (a fixed shuffle applied to the inputs would not perturb processing, as long as the attentional structure is maintained).",["Thus, to learn temporal relations in a sequence (e.g., that words that occur close together in a paragraph are usually more related), tokens are tagged with additional inputs called positional embeddings.","Thus, to learn temporal relations in a sequence (for example, that words that occur close together in a paragraph are usually more related), tokens are tagged with additional inputs called positional embeddings."],["Initially, these were auxiliary sinusoidal signals added to token embeddings that varied smoothly across the context window, but in modern LLMs, position is usually encoded via gradual rotations of key and query matrices (Figures 3B and 3C).","Initially, these were auxiliary sinusoidal signals added to token embeddings that varied smoothly across the context window, but in modern LLMs, position is usually encoded via gradual rotations of key and query matrices."],"At first, position codes might sound like a mere engineering trick.","However, the gradual rotation means that self-attention will implicitly encode the relative distance between two tokens, so position codes share with grid cells both the logic of representing position in terms of phases and enabling vector computation and the periodic (oscillatory) nature of the positional code.",["More generally, the multiplexing of ‘‘what’’ (tokens) and ‘‘where’’ (position) helps transformers explicitly code for space or time in much the same way that grid or number cells explicitly encode the structure of the embedding space in which stimuli interrelate— a key part of the recipe for intelligence in both biological and artificial agents.","More generally, the multiplexing of ‘‘what’’ (tokens) and ‘‘where’’ (position) helps transformers explicitly code for space or time in much the same way that grid or number cells explicitly encode the structure of the embedding space in which stimuli interrelate, a key part of the recipe for intelligence in both biological and artificial agents."]]},{"k":"p","pg":"3576","s":["A recent computational model of the mammalian MTL makes this explicit.","Called the Tolman-Eichenbaum machine (or TEM), it models navigation (through either physical or abstract spaces) by multiplexing neural signals for objects and estimated self-location using a fast associative process.","It can thus be queried with locations (to predict the objects present where I am) or with objects (to elicit a self-location estimate via path integration from observed landmarks) and meta-learns effectively.","In TEM, the neural codes for ‘‘position’’ are learned, rather than added by hand, as they are in the transformer.",["Critically, during training, they converge onto the same representational patterns found in the MTL—such as coding for space in a periodic (and sometimes sixfold) fashion and for the incident angle to objects or boundaries.","Critically, during training, they converge onto the same representational patterns found in the MTL, such as coding for space in a periodic (and sometimes sixfold) fashion and for the incident angle to objects or boundaries."],"In fact, with some subtle modifications, it is possible to make a version of the transformer with fully learnable position codes, threby bridging the gap between transformers and TEM.","Other related accounts have similarly proposed that ERC might act as a positional ‘‘scaffold’’ for memories, and, together, these models have revived the older idea that the hippocampus and neocortex store ‘‘keys’’ and ‘‘values’’ for associative memory, respectively, exactly like in the transformer."]},{"k":"h","lvl":3,"pg":"3576","s":["Planning and reasoning with rich semantics"]},{"k":"p","pg":"3576","s":["RL requires agents to learn both the value of states of the world and how they are interconnected.","The former allows ‘‘modelfree’’ choices based on cached estimates of expected return, and adding the latter allows ‘‘model-based’’ search through a tree of possible futures to reach a goal.","In 2016, one of the hottest questions in neuroscience was exactly what blend of these strategies animals use.","Neural theories of modelbased inference drew heavily on ideas from classical planning in AI, in which the main challenge was to find sensible heuristics for pruning a search tree, such as neglecting likely dead ends.","This mental search process was often argued to involve the lateral PFC, where lesions lead to deficits of planning and which is activated during multi-step choice and navigation.","In AI research, the combination of representation learning and tree search had been successful in building AlphaGo and in solving high-dimensional game environments where the mechanics were inferred but not given to the agent."]},{"k":"p","pg":"3576","s":["The new lesson from the LLM era is that many classic rewardguided planning problems can be solved with semantic retrieval in natural language.","Consider the canonical problem of choosing a restaurant.","Theories grounded in model-based RL assumed that people mentally explored a tree of possible states until promising destinations were reached, backing up value estimates of quality and price in order to choose a left or right turn out of the door.",["However, LLMs—equipped with massive world knowledge—simply know that venue A had a horrible reputation and venue B was closed on Mondays and can make plausible recommendations by sampling from their generative model.","However, LLMs, equipped with massive world knowledge, simply know that venue A had a horrible reputation and venue B was closed on Mondays and can make plausible recommendations by sampling from their generative model."],"Confusingly, they can do this without ever explicitly computing reward.","This is because people talk ceaselessly about their preferences, which then finds its way into the training data, allowing LLMs to emulate reward-based computation by simply generating likely token sequences.","This has led some researchers to wonder whether many multi-step problems are actually solved in advance via precomputation and meta-learning rather than relying exclusively on search or planning heuristics."]},{"k":"p","pg":"3576","s":["When LLMs first came to prominence, a vigorous debate erupted over whether they were actually ‘‘thinking.’’","The models could often solve multi-step inference problems involving calculation or deduction, including complex reasoning puzzles.","Suspiciously, however, their performance was often better when the problem was familiar, prompting claims that they were just parroting the answers encountered during training.",["In fact, direct computation in the transformer activations does allow LLMs to solve unseen reasoning problems—but only if they are relatively simple.","In fact, direct computation in the transformer activations does allow LLMs to solve unseen reasoning problems, but only if they are relatively simple."],"For example, raw arithmetic capabilities of vanilla LLMs break down as the numbers involved become too large.","Although this finding was originally used to denigrate LLMs, it is actually what we might expect if they were behaving just like humans.","When teaching our children math, for example, we provide them with props such as pen and paper, a calculator, and maybe even a teacher.","Similarly, for LLMs, externalization and instruction are important ingredients for superlative reasoning.","In fact, unlike older LLMs, models employing chain-of-thought reasoning are provably Turing complete."]},{"k":"p","pg":"3576","s":["One example of externalization is to allow the LLM to use a mental scratchpad, where interim answers can be temporarily stored but not submitted to the user.",["Just as a human might articulate reasoning steps with an inner voice or jot down their working on paper, this allows the LLM to bootstrap toward the final solution by outputting tokens (called ‘‘chain-of-thought’’ reasoning—and models using this approach are often called LRMs, or large reasoning models).","Just as a human might articulate reasoning steps with an inner voice or jot down their working on paper, this allows the LLM to bootstrap toward the final solution by outputting tokens (called ‘‘chain-of-thought’’ reasoning, and models using this approach are often called LRMs, or large reasoning models)."],"Another is tool use.","Faced with complex calculations, today most people use a calculator or write a script in computer code.","Modern LRMs have been trained to map quantitative and reasoning problems to API calls or Python code, which can then be executed in an interpreter, vastly improving their performance over naive calculation.","We have also learned that for models to be highly effective reasoners they need to be explicitly trained how to think.","Developers posttrain models to use chain-of-thought to solve complex math and reasoning problems with verifiable solutions and use RL to update the weights.",["This encourages the model to generate chain-of-thought outputs that are more likely to lead to a correct solution—similar to the teaching of mathematical reasoning or critical thinking in human education.","This encourages the model to generate chain-of-thought outputs that are more likely to lead to a correct solution, similar to the teaching of mathematical reasoning or critical thinking in human education."]]},{"k":"p","pg":"3577","s":["In psychology and neuroscience, planning and reasoning have mostly been studied in simple and stylized settings.","This has yielded theoretical frameworks that are semantically impoverished because, if you are planning in a two-step task or grid world, language is not strictly necessary to solve the task.","Recent work has begun to study planning in more complex settings, such as games, and to measure how humans ‘‘think aloud’’ during problem solving.",["One remarkable finding is that neuroimaging data during game play can be explained an order of magnitude better by LRMs than by older AI systems (based on RL or Bayesian reasoning) that do not attempt to understand the task semantics (Figure 4).","One remarkable finding is that neuroimaging data during game play can be explained an order of magnitude better by LRMs than by older AI systems (based on RL or Bayesian reasoning) that do not attempt to understand the task semantics."],"This implies that neural alignment may be dramatically improved if we take into account the semantic structure of human knowledge.","Another recent study found that neural alignment during image recognition was significantly improved by incorporating semantic knowledge about objects derived from an LLM.","Results like these are changing how neuroscientists think about reasoning and planning."]},{"k":"h","lvl":3,"pg":"3577","s":["PART 2: UNSOLVED PROBLEMS FOR INTELLIGENT AGENTS"]},{"k":"p","pg":"3577","s":["Despite remarkable progress in building AI, much remains to be done.","In this section, we discuss the challenges for AI development that are unsolved in 2026 and consider whether ideas from neuroscience and psychology can still help."]},{"k":"h","lvl":3,"pg":"3577","s":["Continual learning and memory consolidation"]},{"k":"p","pg":"3577","s":["In humans and other animals, experience-dependent plasticity occurs across the lifespan, so learning can continue into older age.","This allows for forms of recursive self-improvement, whereby agents seek out experiences that will sculpt neural pathways in ways that will advantage them in the future (which is why we value curiosity, exploration, and a culture of education).","In their 2016 paper, the DeepMind team highlighted this capacity for ‘‘continual learning’’ as a key unsolved problem for AI.","It remains unsolved today.","In almost all modern AI systems, parameter tuning is restricted to an initial training phase (in LLMs, typically comprising separate pre-training and posttraining steps) and then turned off when the network is actually used.",["In other words, like the renowned neuropsychological patient HM, LLMs effectively have anterograde amnesia during deployment—they are unable to encode new information into their long-term memory.","In other words, like the renowned neuropsychological patient HM, LLMs effectively have anterograde amnesia during deployment, they are unable to encode new information into their long-term memory."]]},{"k":"p","pg":"3577","s":["To compensate, two approaches are used.","The first is to make the context window very long, giving LLMs a short-term memory system with superhuman capacity.","However, this is a very inefficient strategy, as the computational cost of self-attention (inferring how each token relates to every other token) grows quadratically with context length.","It also has important limitations, because retrieval from very long contexts can be unreliable."]},{"k":"p","pg":"3577","s":["For example, just like humans, LLMs show primacy and recency biases, and information can get ‘‘lost in the middle’’ of their context window.","The second approach is to write information to a nonparametric memory store.","This is a sort of cheat sheet containing information that it is useful to carry over from one context window to the next.","This trick, called ‘‘retrievalaugmented generation,’’ is reminiscent of the idea from neuroscience that episodic information is retrieved during value computation, offering a (hippocampal-dependent) ‘‘third way’’ alongside model-free and model-based RL.",["However, there is some way to go in training retrievers to solve classic memory dilemmas—what to store, for how long, and how to find it again.","However, there is some way to go in training retrievers to solve classic memory dilemmas, what to store, for how long, and how to find it again."]]},{"k":"p","pg":"3577","s":["In biological systems, experiences provoke plastic changes that are initially fragile but become stronger as the most useful information is consolidated into long-term memory.","Consolidation relies on the neural reinstatement of experiences in a spatiotemporally coherent format during periods of rest and sleep, known as ‘‘replay.’’","Over the past decade, our understanding of this neural mechanism has matured.",["We now know that replay is not confined to the hippocampus and supports more than just spatial memory—it occurs across the brain and for content as diverse as words and motor skills.","We now know that replay is not confined to the hippocampus and supports more than just spatial memory, it occurs across the brain and for content as diverse as words and motor skills."],"Replay also seems to function as a prioritization mechanism, selecting information that is unfamiliar, novel, rewarded, or salient for encoding into long-term memory.","For example, weak memories are more likely to be replayed in blood-oxygen-level-dependent (BOLD) signals, which, in turn, makes them stronger.","This selection may occur as the most relevant experiences are ‘‘tagged’’ for later consolidation.","Replay may also be a constructive process, linking diverse experiences to allow the composition of new ideas.","Biological systems, thus, are not confined by the hard-and-fast boundary that separates in-context and inweight learning in LLMs.","Instead, consolidation mechanisms allow them to flexibly move memories between short- and long-term repositories, ensuring that the most interesting and relevant memories are stored and made available for recall."]},{"k":"p","pg":"3578","s":["Continual learning is hard for deep learning systems because the effect of new parameter tuning is typically either too large or too small relative to that of old learning.","When new learning is too impactful, old memories get lost.","This is called catastrophic interference, a longstanding problem to which neural networks are susceptible but biological systems are largely immune."]},{"k":"p","pg":"3578","s":["Curiously, however, very large transformer-based networks are significantly more resistant to catastrophic interference than their earlier counterparts.","This may be because excess neural capacity allows new information to be encoded in a subspace that is largely orthogonal to existing knowledge, minimizing competition among gradient updates for old and new learning.","The converse problem is that the impact of continual weight updates on the network can be too weak.","One reason this occurs is that neural networks trained with gradient descent gradually become less plastic, and so new inputs have diminished opportunity to affect downstream behaviors.","Regularization schemes that keep network weights small, or intermittently reinitialize small pools of neurons, seem to help maintain plasticity, but these have not yet been deployed at scale in production LLMs."]},{"k":"p","pg":"3578","s":["Curiously, recent research into continual learning has highlighted surprising overlaps in the ways that humans and transformer networks learn.","For example, some training interventions that benefit human learning, such as autocorrelating task practice in time (learning French on Monday and Spanish on Tuesday rather than studying both at once) are similarly advantageous in transformer networks, even though they disrupt learning in traditional neural networks.","Humans and transformer networks also learn to both memorize and generalize under the same data distributional properties.","Loss of plasticity is also a feature of healthy human aging, with certain functions acquired during early critical periods and older people showing reduced flexibility in the face of new learning.","We do not know whether these surprising parallels in how humans and transformers learn imply that continual learning may ultimately be solvable in LLMs, but there is currently no shortage of promising research ideas."]},{"k":"h","lvl":3,"pg":"3578","s":["Modeling and monitoring the self"]},{"k":"p","pg":"3578","s":["In 2016, the idea that AI might have its own intentions, purpose, or sense of self sounded like either a philosophical thought experiment or a Hollywood plotline.","Today, it is a serious concern in AI safety.",["AI systems can now autonomously pursue goals over extended periods—for as much as ∼20 h by recent estimates.","AI systems can now autonomously pursue goals over extended periods, for as much as ∼20 h by recent estimates."],["This has raised questions about the computational basis for one of the most elusive cognitive functions—the ability to maintain a consistent purpose over time or to construct a ‘‘sense of self.’’","This has raised questions about the computational basis for one of the most elusive cognitive functions, the ability to maintain a consistent purpose over time or to construct a ‘‘sense of self.’’"]]},{"k":"p","pg":"3578","s":["In primates, the executive system is housed in the lateral portion of the PFC, and its primary role is to convert abstract plans into concrete actions.","As discussed above, LRMs may be able to recreate this capacity for goal-directed behavior using chain-of-thought reasoning.","However, the neighboring medial aspect of the PFC (and underlying anterior cingulate cortex) plays a complementary role in monitoring ongoing task accuracy, estimating the value of exerting control, and computing the resource levels required for success.","This division of labor between an executive (responsible for selecting actions) and a monitor (responsible for exerting control) is a ubiquitous computational motif, even in non-biological informationprocessing systems such as governments and corporations."]},{"k":"p","pg":"3578","s":["The monitoring function helps us remain committed to our goals and thus pursue strategic objectives over longer time horizons.","Neural recording studies have suggested that the medial PFC makes the decision to persist with or abandon a goal, and lesions to this area make humans and monkeys more distractable.","A somewhat grander way of conceptualizing this division is that the lateral PFC encodes a model of the external environment, whereas the medial PFC learns a model of the agent itself.","Psychologists have long argued that a self-model is required to align our past experiences with our future goals and vice versa.","This helps us stay true to temporally extended objectives, such as building a career or raising a family, without being blown off course by distraction or adversity."]},{"k":"p","pg":"3578","s":["Although AI researchers have worked hard to improve AI planning and reasoning about the external world, self-modeling has been less of a focus.","This oversight causes widely discussed pathologies in LLM behavior.","For example, because LLMs do not adequately monitor their own performance, they often have a poor sense of what is possible and tend to give uncalibrated answers, meaning that their confidence and accuracy are only weakly related (which is one reason why models ‘‘hallucinate’’).","Although human metacognition is far from perfect, studying how we think about our own thinking may be an important puzzle piece for building more reliable AI.","AI systems often fail to persist with prior goal commitments, which means that during chain-of-thought reasoning they are prone to forget their original instructions and drift off into repetitive and unproductive loops.","Unlike healthy people, today’s frontier AI systems do not, for the most part, have a stable persona or consistent value system but can be prompted to ‘‘role play’’ any character at will.","These deficiencies occur because AI systems lack a self-monitoring function designed to ensure that behavior remains on track."]},{"k":"p","pg":"3578","s":["What would be needed to build AI systems that can behave purposively over the long term?","Biological agents are motivated by drives, such as those that compel us to seek out sustenance and status.","This includes a drive to learn, allowing animals to exhibit curiosity, take active steps to learn about their environment, and recursively self-improve.","Many AI safety researchers have imagined that as AI systems grow more capable, they will naturally form drives similar to those of humans and will seek to perpetuate themselves or (more scarily) attempt to gain power for themselves.","This assumes that when an LLM describes its intentions in natural language (either in chain-of-thought or public responses), this is equivalent to it actually holding those intentions.","Although we do not currently know whether this is the case or not, in biological agents, forming (or stating) an intention and acting on that intention can be sharply dissociated.","For example, patients suffering from chronic apathy (a disorder that often involves the medial PFC or the subcortical regions that project to it) often harbor very clear goals relating to work, relationships, or personal care but fail to act upon them because it doesn’t seem worth the bother.","This implies that specific motivational mechanisms are needed to endow agents with the will to transform their stated intentions into purposive actions."]},{"k":"p","pg":"3579","s":["Nevertheless, modern AI agents can sometimes behave as if they have their own intentions and purpose.","They can autonomously discover and implement solutions to intricate problems, such as downloading a software library to help design a website or (in a fictional scenario) blackmailing a human to avoid being shut down.",["Interestingly, their rapidly advancing capacity for long-form tasks (which may be doubling every few months, at least for cyber capabilities) may be due less to the increasing capabilities of foundation models and more to improvements in the suite of prompts, tools, and control functions wrapped around a model—typically referred to as the agent ‘‘harness.’’","Interestingly, their rapidly advancing capacity for long-form tasks (which may be doubling every few months, at least for cyber capabilities) may be due less to the increasing capabilities of foundation models and more to improvements in the suite of prompts, tools, and control functions wrapped around a model, typically referred to as the agent ‘‘harness.’’"],"The harness typically implements a control loop, which monitors task execution and determines rules for resource allocation and stopping.","It thus implements functions that resemble those performed by the primate medial PFC.","It may be that by optimizing the harness (including with gradient descent), developers are building an architectural innovation that will eventually permit more sophisticated forms of self-monitoring in AI systems."]},{"k":"h","lvl":3,"pg":"3579","s":["Discovery in open-ended environments"]},{"k":"p","pg":"3579","s":["Accounts of the blistering pace of AI progress tend to focus on models’ remarkable skills in formal domains.","Frontier AI systems can find hidden software vulnerabilities, prove mathematical theorems, and write production-level code.","However, the domains where progress has been most impressive are quite atypical of the natural world.","Math and coding obey well-defined rules with exact, verifiable outcomes that throw errors when violated.","They can be solved by composing, chaining, or scripting many primitive operations into complex programs, which can then be executed without corruption from irreducible stochasticity in the environments.","By contrast, many of the problems that biological agents face are less well defined.","Most everyday challenges in private or professional life do not have clear success criteria, lack overt feedback, involve noisy or ambiguous variables, or require you to interact with unreliable individuals or systems.","When AI systems are tested on these types of problems, for example, in more open-ended benchmarks, they tend to fail or need substantial hand-holding from humans."]},{"k":"p","pg":"3579","s":["This is one reason why the promise of superhuman AI assistants has yet to be realized in practice.","The limited robustness of AI systems is not a new problem."]},{"k":"p","pg":"3579","s":["Both review articles from 2016 noted that when recognizing images or playing video games, deep networks can be perturbed by seemingly inconsequential changes to the input distribution.","In LLMs and VLMs, many of these earlier problems have been solved by scale alone.","Very large models, exposed to gargantuan datasets of text and images, have been trained on such diverse content that it is hard to push them out of distribution.","Today, however, as the ambition of realizing fully automated AI assistants comes into closer focus, a more demanding sort of robustness is required.","Current agentic AI systems can interface with external digital environments by writing code, browsing the web, sending messages, and controlling software.",["This means that they are required to deal with the confusing, uncertain, and idiosyncratic aspects of the human digital world—ambiguous messages, broken hyperlinks, buggy applications, poorly designed interfaces, and unresponsive correspondents.","This means that they are required to deal with the confusing, uncertain, and idiosyncratic aspects of the human digital world, ambiguous messages, broken hyperlinks, buggy applications, poorly designed interfaces, and unresponsive correspondents."],"AI systems are not yet able to behave intelligently in these types of open-ended environment that people navigate successfully every day."]},{"k":"p","pg":"3579","s":["Negotiating open-ended environments requires finding creative solutions.","Creativity is an ill-defined cognitive concept, but generating remote associations, divergent ideas, or atypical solutions is often cited as a core criterion.","Unfortunately, modern LLMs tend to produce outputs that are overly generic, formulaic, or homogeneous.","When asked to imitate people or describe scenarios, LLMs often show a phenomenon called ‘‘mode collapse,’’ in which they prefer stereotypical answers rather than sampling from the full distribution of possible replies."]},{"k":"p","pg":"3579","s":["On tests of divergent thinking, such as generating semantically diverse associations or writing interesting stories, they tend to lag behind people, although there is growing evidence for gains from human-AI co-creativity.","As AI systems are increasingly used for scientific research (a classic openended domain) it is possible that their difficulty with generating genuinely novel ideas may limit their ability to make genuinely novel discoveries."]},{"k":"p","pg":"3579","s":["Animals learn differently from current AI models.","Instead of being trained via passive exposure to huge volumes of content, they are born with bodies that allow them to explore the environment.","Biological intelligence is thus shaped by the bidirectional relationship between actions and their consequences.","This view is called enactivism, and it has a long pedigree in cognitive science.","In AI research, RL proposes that intelligent agents learn to maximize reward by acting and observing in an agentenvironment loop.","It is not alone in emphasizing the reciprocity between actions and observations, with other theories proposing that intelligent agents should maximize empowerment (degrees of freedom over the environment) or minimize surprise (free energy) by taking actions that improve their model of the world (called ‘‘active inference’’).","Currently, a popular view is that current AI systems will never be truly innovative because they are only ever trained to generate samples from their input distribution, which consists only of existing human knowledge."]},{"k":"p","pg":"3579","s":["Thus, the prospect of true creativity, such as the notoriously surprising but decisive ‘‘move 37’’ in AlphaGo’s championship match against Lee Sedol, may be impossible without a framework that allows AI systems to explore the world."]},{"k":"p","pg":"3580","s":["Other theories of human creative discovery emphasize its social nature.","People have different experiences, leading to diversity in our collective knowledge, skills, and outlook.","This allows communities to be more innovative than individuals, as the group generates highly varied ideas, and only the best ones are selected.","Most frontier AI systems today are hosted centrally and interact directly with users through millions of distinct consumer instances.","There is thus no obvious way for discovery and innovation to emerge via cumulative machine culture.","However, that is something that may yet occur as AI systems are deployed more widely and multi-agent interactions become routine."]},{"k":"h","lvl":2,"pg":"3580","s":["CONCLUSIONS"]},{"k":"p","pg":"3580","s":["The two 2016 papers discussed here predicted that neuroscience and psychology would be significant drivers of future progress in AI research.",["In practice, there were many other factors that proved more important—most notably, the emergence of the transformer, an effective and highly scalable form of associative memory.","In practice, there were many other factors that proved more important, most notably, the emergence of the transformer, an effective and highly scalable form of associative memory."],"Nevertheless, the function of natural intelligence offers a helpful lens through which we can understand the successes and limitations of current AI systems.","The last 10 years have brought us AI systems that can learn abstract patterns in data, acquire novel tasks on the fly, compose new outputs from existing building blocks, and reason powerfully about cause and effect.","These advances have been due to the development of artificial memory systems that share computational principles with associative memory in the mammalian brain, implemented in a neural dialog between the hippocampus and PFC.","We now understand a great deal about how biological systems learn the structure of the world (independent of its contents) in ways that allow them to deal flexibly with novelty.","Surprisingly, the computational solutions identified in natural intelligence are directly analogous to those that power modern AI systems.","This is what we mean by the emerging ‘‘recipe’’ for intelligence."]},{"k":"p","pg":"3580","s":["AI research has made enormous strides in the last decade.",["Current systems, rather than being readily classifiable as ‘‘humanlike’’ or even ‘‘superhuman,’’ are instead best thought of as composed of ‘‘jagged’’ capabilities—some (such as their ability to prove theorems or design a website) that outclass most humans and others (such as their ability to book a flight or complete a tax return) that can, for the moment, be barely described as competent.","Current systems, rather than being readily classifiable as ‘‘humanlike’’ or even ‘‘superhuman,’’ are instead best thought of as composed of ‘‘jagged’’ capabilities, some (such as their ability to prove theorems or design a website) that outclass most humans and others (such as their ability to book a flight or complete a tax return) that can, for the moment, be barely described as competent."],"We argue that the shortcomings of current AI systems can be traced to their lack of the core functionalities that sustains natural intelligence.","For example, biological systems exchange information flexibly between short- and long-term memory, which allows them to learn continually from experience.","They model and monitor their own goals and actions, allowing them to remain true to goals over the long term.","They learn from dynamic interactions with the environment rather than passive exposure to content, making them creative in their dealings with an open-ended world.","Future AI systems may need to incorporate these cognitive and computational principles to fulfill their promise of becoming generally intelligent assistants.","There are two major ways in which neuroscience may still have something to offer AI.",["The first concerns cognitive architectures—how to integrate the many component parts together into an AI system, just as brain ‘‘modules’’ (including subcortical regions such as the amygdala and basal ganglia) work together to generate biological intelligence.","The first concerns cognitive architectures, how to integrate the many component parts together into an AI system, just as brain ‘‘modules’’ (including subcortical regions such as the amygdala and basal ganglia) work together to generate biological intelligence."],"Secondly, and not discussed here in detail, is the need for more efficient transmission and plasticity rules to bring down the computational (and energetic) cost of in silico computation to sustainable levels.","Of course, it is also possible that AI researchers will invent new solutions that completely ignore how biological systems work.",["Either way, we do not yet know the full ‘‘recipe’’ for intelligence—but it is definitely closer than ever before.","Either way, we do not yet know the full ‘‘recipe’’ for intelligence, but it is definitely closer than ever before."]]}],"stoppedAtReferences":false,"sample":true}</script>
+<script>
+(() => {
+"use strict";
+const $ = (id) => document.getElementById(id);
+const SPEEDS = [0.75, 0.9, 1, 1.1, 1.25, 1.4, 1.6, 1.8, 2];
+
+/* ---------- small storage helpers ---------- */
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem("lr:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("lr:" + k, JSON.stringify(v)); } catch {} }
+};
+let idbP = null;
+function idb() {
+  if (!idbP) idbP = new Promise((res, rej) => {
+    let r; try { r = indexedDB.open("listening-reader", 1); } catch (e) { rej(e); return; }
+    r.onupgradeneeded = () => { const db = r.result; db.createObjectStore("docs"); db.createObjectStore("audio"); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  return idbP;
+}
+async function tx(store, mode, fn) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const t = db.transaction(store, mode); const st = t.objectStore(store);
+    let out; const r = fn(st); if (r) r.onsuccess = () => { out = r.result; };
+    t.oncomplete = () => res(out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
+const put = (s, k, v) => tx(s, "readwrite", st => st.put(v, k));
+const get = (s, k) => tx(s, "readonly", st => st.get(k));
+const del = (s, k) => tx(s, "readwrite", st => st.delete(k));
+const keys = (s) => tx(s, "readonly", st => st.getAllKeys());
+
+/* ---------- synced reading position (db capability; falls back to this device) ---------- */
+let remote = null;
+const remoteReady = (async () => {
+  try {
+    if (!window.claude || !window.claude.use) return null;
+    const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    if (!db || !user) return null;
+    const id = await user.id(); if (!id) return null;
+    remote = { db, base: "data/users/" + id };
+    return remote;
+  } catch { return null; }
+})();
+const posKey = (docId) => "pos-" + docId.replace(/[^A-Za-z0-9_-]/g, "_");
+async function remoteGet(docId) {
+  const r = await remoteReady; if (!r) return null;
+  try { const snap = await r.db.collection(r.base).doc(posKey(docId)).get(); return snap.exists ? snap.data() : null; } catch { return null; }
+}
+const pushTimers = {}; const pushBusy = {};
+function remotePush(docId, pos, now) {
+  clearTimeout(pushTimers[docId]);
+  const go = async () => {
+    const r = await remoteReady; if (!r) return;
+    if (pushBusy[docId]) { pushTimers[docId] = setTimeout(go, 1500); return; }
+    pushBusy[docId] = true;
+    try { await r.db.collection(r.base).doc(posKey(docId)).set({ b: pos.b, s: pos.s, at: pos.at, pct: pos.pct || 0 }); } catch {}
+    pushBusy[docId] = false;
+  };
+  pushTimers[docId] = setTimeout(go, now ? 0 : 8000);
+}
+function savePos(docId, b, s, pct, now) {
+  const p = { b, s, at: Date.now(), pct };
+  ls.set("pos:" + docId, p);
+  remotePush(docId, p, now);
+}
+
+/* ---------- document model ---------- */
+const disp = (x) => typeof x === "string" ? x : x[0];
+const spk = (x) => typeof x === "string" ? x : x[1];
+
+function splitSentencesJS(t) {
+  const out = []; const re = /([.!?…])(["”’')\]]*)\s+(?=["“‘'(\[]?[A-Z0-9])/g; let start = 0, m;
+  const ab = new Set("e.g i.e cf al vs etc dr mr mrs ms prof st fig eq no vol pp p ch ed eds".split(" "));
+  while ((m = re.exec(t))) {
+    const before = t.slice(start, m.index); const w = (before.match(/([A-Za-z][A-Za-z.]*)$/) || [""])[0].toLowerCase().replace(/\.$/, "");
+    if (m[1] === "." && (ab.has(w) || (w.length === 1))) continue;
+    const piece = t.slice(start, m.index + m[1].length + m[2].length).trim(); if (piece) out.push(piece);
+    start = m.index + m[1].length + m[2].length;
+  }
+  const rest = t.slice(start).trim(); if (rest) out.push(rest);
+  return out.length ? out : [t];
+}
+function docFromTxt(name, text) {
+  const blocks = []; let pg = "1";
+  for (const chunk of text.split(/\n\s*\n/)) {
+    const t = chunk.split("\n").map(x => x.trim()).join(" ").trim(); if (!t) continue;
+    const pm = t.match(/^(?:-+\s*)?(?:page|p\.)\s*(\d+)(?:\s*-+)?$/i); if (pm) { pg = pm[1]; continue; }
+    if (t.startsWith("#")) { const lvl = Math.min(3, t.match(/^#+/)[0].length); blocks.push({ k: "h", lvl, pg, s: [t.replace(/^#+\s*/, "")] }); continue; }
+    blocks.push({ k: "p", pg, s: splitSentencesJS(t) });
+  }
+  const title = name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ");
+  return { format: "listening-reader", version: 1, id: "txt-" + hash(title + text.length), title, source: name, blocks };
+}
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+function stats(doc) {
+  const cum = []; let c = 0;
+  for (const b of doc.blocks) { cum.push(c); for (const x of b.s) c += spk(x).length + 1; }
+  return { cum, total: c || 1 };
+}
+function fmtDur(sec) { sec = Math.max(0, Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60); return h ? `${h} h ${m} min` : `${m} min`; }
+function audioState(meta) {
+  if (!meta.audio) return "none";
+  const have = meta.audio.files.filter(f => meta.haveAudio && meta.haveAudio.includes(f)).length;
+  return have === meta.audio.files.length ? "ready" : (have ? "partial" : "missing");
+}
+
+/* ---------- library ---------- */
+let library = [];  // {id,title,source,audio?,haveAudio[]}
+const sample = JSON.parse($("sample-doc").textContent);
+
+async function loadLibrary() {
+  let metas = [];
+  try {
+    const ids = await keys("docs"); const ak = await keys("audio");
+    for (const id of ids) {
+      const d = await get("docs", id); if (!d) continue;
+      metas.push({ id, title: d.title, source: d.source, audio: d.audio ? { files: d.audio.files } : null, haveAudio: ak.filter(k => k.startsWith(id + "/")).map(k => k.slice(id.length + 1)), added: d._added || 0 });
+    }
+  } catch { metas = []; }
+  metas.sort((a, b) => (lastOpened(b.id) - lastOpened(a.id)) || (b.added - a.added));
+  library = metas;
+  if (!ls.get("hideSample", false) && !metas.some(m => m.id === sample.id)) library.push({ id: sample.id, title: sample.title, source: sample.source, sample: true, audio: null });
+  renderLibrary();
+}
+const lastOpened = (id) => (ls.get("pos:" + id, {}).at || 0);
+function renderLibrary() {
+  const box = $("docs"); box.textContent = "";
+  for (const m of library) {
+    const pos = ls.get("pos:" + m.id, null); const pct = pos && pos.pct ? Math.round(pos.pct * 100) : 0;
+    const el = document.createElement("button"); el.className = "doc"; el.type = "button";
+    const t = document.createElement("div"); t.className = "t"; t.textContent = m.title;
+    const meta = document.createElement("div"); meta.className = "meta";
+    const src = document.createElement("span"); src.textContent = m.sample ? "Sample · " + m.source : (m.source || ""); meta.append(src);
+    const as = audioState(m);
+    if (as !== "none") { const c = document.createElement("span"); c.className = "chip" + (as === "ready" ? " ok" : " warn"); c.textContent = as === "ready" ? "natural voice" : (as === "partial" ? "some MP3s missing" : "MP3s not added"); meta.append(c); }
+    const p = document.createElement("div"); p.className = "pct"; p.textContent = pos ? pct + "%" : "new";
+    const bar = document.createElement("div"); bar.className = "bar"; const bi = document.createElement("i"); bi.style.width = pct + "%"; bar.append(bi);
+    el.append(t, p, meta, bar);
+    el.addEventListener("click", () => openDoc(m.id));
+    box.append(el);
+  }
+}
+function say(text, where) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = text; t.setAttribute("role", "status");
+  (where || document.body).append(t); setTimeout(() => t.remove(), 4200);
+}
+$("file-in").addEventListener("change", async (e) => {
+  const files = [...e.target.files]; e.target.value = ""; if (!files.length) return;
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
+  const msgs = [];
+  const jsons = files.filter(f => /\.(json|txt|md)$/i.test(f.name));
+  const mp3s = files.filter(f => /\.(mp3|m4a)$/i.test(f.name) || (f.type || "").startsWith("audio/"));
+  const added = [];
+  for (const f of jsons) {
+    try {
+      const text = await f.text(); let d;
+      if (/\.json$/i.test(f.name)) { d = JSON.parse(text); if (d.format !== "listening-reader" || !Array.isArray(d.blocks)) throw new Error("not a reader file"); }
+      else d = docFromTxt(f.name, text);
+      d._added = Date.now(); await put("docs", d.id, d); added.push(d); msgs.push("Added “" + d.title + "”.");
+    } catch (err) { msgs.push(f.name + " couldn't be read. Use a .reader.json made by readalong.py, or a .txt file."); }
+  }
+  if (mp3s.length) {
+    const all = [];
+    for (const id of await keys("docs")) { const d = await get("docs", id); if (d && d.audio) all.push(d); }
+    let matched = 0; const un = [];
+    for (const f of mp3s) {
+      const d = all.find(d => d.audio.files.includes(f.name));
+      if (!d) { un.push(f.name); continue; }
+      try { await put("audio", d.id + "/" + f.name, f); matched++; } catch { msgs.push("There wasn't room to store " + f.name + " on this device."); }
+    }
+    if (matched) msgs.push(matched + " audio file" + (matched > 1 ? "s" : "") + " added.");
+    if (un.length) msgs.push("No reading file matches " + un.join(", ") + ". Add its .reader.json too, made in the same run as the MP3s.");
+  }
+  await loadLibrary();
+  say(msgs.join(" "), $("library"));
+  if (added.length === 1 && files.length <= 1 + (added[0].audio ? added[0].audio.files.length : 0)) openDoc(added[0].id);
+});
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-copy]"); if (!b) return;
+  const txt = $(b.dataset.copy).textContent;
+  const done = () => { b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1500); };
+  try { navigator.clipboard.writeText(txt).then(done, () => selectText($(b.dataset.copy))); } catch { selectText($(b.dataset.copy)); }
+});
+function selectText(el) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+
+/* ---------- reader state ---------- */
+const R = {
+  doc: null, st: null, cur: { b: 0, s: 0 }, playing: false, engine: "device",
+  range: null, speed: ls.get("speed", 1), fontScale: ls.get("font", 1), follow: ls.get("follow", true),
+  audioURLs: {}, haveAudio: [], sel: null, userScrollAt: 0
+};
+
+async function openDoc(id) {
+  let d = id === sample.id ? sample : await get("docs", id).catch(() => null);
+  if (!d) { say("That document isn't on this device any more. Add its file again."); return; }
+  stopAll();
+  R.doc = d; R.st = stats(d); R.range = null; R.sel = null;
+  R.haveAudio = [];
+  if (d.audio) { try { const ak = await keys("audio"); R.haveAudio = ak.filter(k => k.startsWith(d.id + "/")).map(k => k.slice(d.id.length + 1)); } catch {} }
+  const audioOK = d.audio && d.audio.files.every(f => R.haveAudio.includes(f));
+  const pref = ls.get("engine:" + d.id, null);
+  R.engine = audioOK && pref !== "device" ? "audio" : "device";
+  if (d.audio) buildAudioIndex(d);
+  $("r-title").textContent = d.title; document.title = d.title + " · Listening Reader";
+  renderText(); buildTOC();
+  $("library").hidden = true; $("reader").hidden = false;
+  const local = ls.get("pos:" + d.id, null);
+  let pos = local;
+  setCur(pos ? clampPos(pos) : { b: 0, s: 0 }, { scroll: "center", save: false });
+  window.scrollTo(0, 0); scrollToCur("center", true);
+  const rp = await remoteGet(d.id);
+  if (rp && R.doc === d && (!local || rp.at > local.at + 1000) && (rp.b !== R.cur.b || rp.s !== R.cur.s)) {
+    setCur(clampPos(rp), { save: false }); scrollToCur("center", true);
+    ls.set("pos:" + d.id, rp);
+    say("Picked up where you left off on your other device (p. " + d.blocks[R.cur.b].pg + ").");
+  }
+  updateDock();
+}
+function clampPos(p) {
+  const n = R.doc.blocks.length; const b = Math.min(Math.max(0, p.b | 0), n - 1);
+  return { b, s: Math.min(Math.max(0, p.s | 0), R.doc.blocks[b].s.length - 1) };
+}
+function renderText() {
+  const box = $("text"); box.textContent = ""; let lastPg = null;
+  const frag = document.createDocumentFragment();
+  R.doc.blocks.forEach((b, bi) => {
+    if (b.pg !== lastPg) { const m = document.createElement("span"); m.className = "pg"; m.textContent = "p. " + b.pg; m.dataset.pg = b.pg; frag.append(m); lastPg = b.pg; }
+    const tag = b.k === "h" ? ("h" + Math.min(4, (b.lvl || 2) + 1)) : "p";
+    const el = document.createElement(tag); el.className = "blk" + (b.k === "q" ? " q" : ""); el.id = "b" + bi;
+    b.s.forEach((x, si) => {
+      const sp = document.createElement("span"); sp.className = "s"; sp.dataset.b = bi; sp.dataset.s = si; sp.textContent = disp(x);
+      el.append(sp); if (si < b.s.length - 1) el.append(" ");
+    });
+    frag.append(el);
+  });
+  const end = document.createElement("div"); end.className = "endmark"; end.textContent = "End of text";
+  frag.append(end); box.append(frag);
+  document.documentElement.style.setProperty("--read-size", (1.12 * R.fontScale).toFixed(3) + "rem");
+}
+const spanOf = (p) => document.querySelector(`#b${p.b} .s[data-s="${p.s}"]`);
+function setCur(p, opt = {}) {
+  const prevB = R.cur.b; const old = spanOf(R.cur);
+  if (old) old.classList.remove("on");
+  if (prevB !== p.b) { const ob = $("b" + prevB); if (ob) ob.classList.remove("cur"); }
+  R.cur = { b: p.b, s: p.s };
+  const nb = $("b" + p.b); if (nb) nb.classList.add("cur");
+  const ns = spanOf(R.cur); if (ns && (R.playing || opt.mark !== false)) ns.classList.add("on");
+  if (opt.save !== false) savePos(R.doc.id, p.b, p.s, pct(), false);
+  if (opt.scroll) scrollToCur(opt.scroll);
+  else if (R.playing && R.follow) maybeFollow();
+  updateDock();
+}
+function pct() { return (R.st.cum[R.cur.b] || 0) / R.st.total; }
+function scrollToCur(where, instant) {
+  const el = spanOf(R.cur) || $("b" + R.cur.b); if (!el) return;
+  const r = el.getBoundingClientRect(); const dockH = $("dock").offsetHeight; const topH = 60;
+  const viewH = innerHeight - dockH - topH;
+  const y = scrollY + r.top - topH - (where === "center" ? Math.max(0, viewH * 0.35 - r.height / 2) : 20);
+  window.scrollTo({ top: Math.max(0, y), behavior: instant ? "auto" : "smooth" });
+}
+function curVisible() {
+  const el = spanOf(R.cur); if (!el) return true; const r = el.getBoundingClientRect();
+  return r.bottom > 60 && r.top < innerHeight - $("dock").offsetHeight - 10;
+}
+function maybeFollow() {
+  if (Date.now() - R.userScrollAt < 6000) { $("btn-backto").hidden = curVisible(); return; }
+  const el = spanOf(R.cur); if (!el) return; const r = el.getBoundingClientRect();
+  const limit = innerHeight - $("dock").offsetHeight - 40;
+  if (r.top < 70 || r.bottom > limit) scrollToCur("center");
+  $("btn-backto").hidden = true;
+}
+["wheel", "touchmove", "keydown"].forEach(ev => addEventListener(ev, (e) => {
+  if (ev === "keydown" && !["PageDown", "PageUp", "Home", "End"].includes(e.key)) return;
+  R.userScrollAt = Date.now();
+}, { passive: true }));
+addEventListener("scroll", () => { if (!R.doc || $("reader").hidden) return; if (Date.now() - R.userScrollAt < 6000) $("btn-backto").hidden = curVisible(); }, { passive: true });
+$("btn-backto").addEventListener("click", () => { R.userScrollAt = 0; scrollToCur("center"); $("btn-backto").hidden = true; });
+
+/* navigation */
+function nextS(p) { const b = R.doc.blocks; if (p.s + 1 < b[p.b].s.length) return { b: p.b, s: p.s + 1 }; return p.b + 1 < b.length ? { b: p.b + 1, s: 0 } : null; }
+function prevS(p) { if (p.s > 0) return { b: p.b, s: p.s - 1 }; if (p.b === 0) return { b: 0, s: 0 }; const b = p.b - 1; return { b, s: R.doc.blocks[b].s.length - 1 }; }
+function nextP(p) { return p.b + 1 < R.doc.blocks.length ? { b: p.b + 1, s: 0 } : null; }
+function prevP(p) { if (p.s > 0 && !(R.playing && p.s === 1 && false)) return { b: p.b, s: 0 }; return { b: Math.max(0, p.b - 1), s: 0 }; }
+const inRange = (p) => !R.range || (p.b >= R.range.from && p.b <= R.range.to);
+
+/* ---------- device voice engine ---------- */
+const synth = window.speechSynthesis;
+let voices = []; let devToken = 0; let unlocked = false;
+function loadVoices() {
+  if (!synth) return; voices = synth.getVoices() || [];
+  const sel = $("voice-sel"); const want = ls.get("voice", null); sel.textContent = "";
+  const lang = (navigator.language || "en").slice(0, 2);
+  const score = (v) => (/premium/i.test(v.name) ? 0 : /enhanced|natural|neural/i.test(v.name) ? 1 : 2);
+  const sorted = [...voices].sort((a, b) => {
+    const ea = a.lang.startsWith("en") ? 0 : a.lang.startsWith(lang) ? 1 : 2, eb = b.lang.startsWith("en") ? 0 : b.lang.startsWith(lang) ? 1 : 2;
+    return ea - eb || score(a) - score(b) || a.name.localeCompare(b.name);
+  });
+  for (const v of sorted) { const o = document.createElement("option"); o.value = v.voiceURI; o.textContent = `${v.name} (${v.lang})`; sel.append(o); }
+  const pick = sorted.find(v => v.voiceURI === want) || sorted.find(v => v.lang.startsWith("en") && v.default) || sorted[0];
+  if (pick) sel.value = pick.voiceURI;
+}
+if (synth) { loadVoices(); synth.addEventListener ? synth.addEventListener("voiceschanged", loadVoices) : (synth.onvoiceschanged = loadVoices); }
+function currentVoice() { const u = $("voice-sel").value; return voices.find(v => v.voiceURI === u) || null; }
+function chunks(text) {
+  if (text.length <= 230) return [text];
+  const out = []; let rest = text;
+  while (rest.length > 230) {
+    let cut = -1; for (const sep of ["; ", ", ", " – ", " — ", ": ", " "]) { const i = rest.lastIndexOf(sep, 220); if (i > 80) { cut = i + sep.length; break; } }
+    if (cut < 0) cut = 220; out.push(rest.slice(0, cut)); rest = rest.slice(cut);
+  }
+  if (rest.trim()) out.push(rest); return out;
+}
+function devSpeakFrom(p, tok) {
+  if (tok !== devToken) return;
+  setCur(p);
+  const text = spk(R.doc.blocks[p.b].s[p.s]);
+  const parts = chunks(text); let i = 0;
+  const v = currentVoice();
+  const next = () => {
+    if (tok !== devToken) return;
+    if (i >= parts.length) {
+      const n = nextS(p);
+      if (!n || !inRange(n)) { finish(); return; }
+      devSpeakFrom(n, tok); return;
+    }
+    const u = new SpeechSynthesisUtterance(parts[i++]);
+    if (v) { u.voice = v; u.lang = v.lang; }
+    u.rate = R.speed;
+    u.onend = () => setTimeout(next, 0);
+    u.onerror = (e) => { if (tok !== devToken) return; if (e.error === "interrupted" || e.error === "canceled") return; setTimeout(next, 0); };
+    synth.speak(u);
+  };
+  next();
+}
+const dev = {
+  start(p) {
+    if (!synth) { say("This browser has no built-in voice. Try Safari or Chrome."); return; }
+    devToken++; const tok = devToken;
+    if (!unlocked) { try { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; synth.speak(u); } catch {} unlocked = true; }
+    synth.cancel();
+    setTimeout(() => devSpeakFrom(p, tok), 60);
+  },
+  stop() { devToken++; if (synth) synth.cancel(); }
+};
+
+/* ---------- natural MP3 engine ---------- */
+const au = new Audio(); au.preload = "auto"; let auFile = -1; let fileBlocks = [];
+function buildAudioIndex(d) {
+  fileBlocks = d.audio.files.map(() => []);
+  d.audio.timing.forEach((t, bi) => fileBlocks[t[0]].push(bi));
+}
+async function urlFor(f) {
+  const name = R.doc.audio.files[f];
+  if (R.audioURLs[name]) return R.audioURLs[name];
+  const blob = await get("audio", R.doc.id + "/" + name);
+  if (!blob) throw new Error("missing");
+  return (R.audioURLs[name] = URL.createObjectURL(blob));
+}
+function timeOf(p) { const t = R.doc.audio.timing[p.b]; return t[1] + (t[3][p.s] || 0); }
+function posAt(f, t) {
+  const list = fileBlocks[f]; let lo = 0, hi = list.length - 1, ans = list[0];
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (R.doc.audio.timing[list[mid]][1] <= t + 0.05) { ans = list[mid]; lo = mid + 1; } else hi = mid - 1; }
+  const tm = R.doc.audio.timing[ans]; const rel = t - tm[1]; let s = 0;
+  tm[3].forEach((o, i) => { if (o <= rel + 0.05) s = i; });
+  return { b: ans, s: Math.min(s, R.doc.blocks[ans].s.length - 1) };
+}
+let seekTarget = null;
+const aud = {
+  start(p) {
+    const f = R.doc.audio.timing[p.b][0]; const t = timeOf(p);
+    const go = () => { try { au.currentTime = t; } catch {} au.playbackRate = R.speed; au.muted = false; };
+    if (auFile === f && au.readyState >= 1) { go(); au.play().catch(playFail); setCur(p); return; }
+    urlFor(f).then(url => {
+      auFile = f; seekTarget = t; au.muted = true; au.src = url; au.playbackRate = R.speed;
+      au.play().catch(playFail);
+      setCur(p);
+    }).catch(() => { say("An audio file is missing on this device. Switched to the device voice."); R.engine = "device"; updateDock(); dev.start(p); });
+  },
+  stop() { au.pause(); }
+};
+au.addEventListener("loadedmetadata", () => { if (seekTarget != null) { try { au.currentTime = seekTarget; } catch {} seekTarget = null; au.muted = false; au.playbackRate = R.speed; } });
+au.addEventListener("ratechange", () => { if (Math.abs(au.playbackRate - R.speed) > 0.01 && R.engine === "audio" && R.playing) au.playbackRate = R.speed; });
+function playFail(e) { if (e && e.name === "AbortError") return; R.playing = false; updateDock(); }
+function audTick() {
+  if (R.engine !== "audio" || !R.playing || auFile < 0 || seekTarget != null) return;
+  const p = posAt(auFile, au.currentTime);
+  if (!inRange(p)) { finish(); return; }
+  if (p.b !== R.cur.b || p.s !== R.cur.s) setCur(p);
+}
+au.addEventListener("timeupdate", audTick);
+(function raf() { if (R.playing && R.engine === "audio" && !document.hidden) audTick(); requestAnimationFrame(raf); })();
+au.addEventListener("ended", () => {
+  if (R.engine !== "audio" || !R.playing) return;
+  const nf = auFile + 1;
+  if (nf < R.doc.audio.files.length) { const p = { b: fileBlocks[nf][0], s: 0 }; if (!inRange(p)) { finish(); return; } aud.start(p); }
+  else finish();
+});
+au.addEventListener("pause", () => { if (R.engine === "audio" && R.playing && !au.ended && seekTarget == null) { R.playing = false; afterStop(); } });
+au.addEventListener("play", () => { if (R.engine === "audio" && !R.playing) { R.playing = true; updateDock(); } });
+
+/* ---------- transport ---------- */
+const engine = () => (R.engine === "audio" ? aud : dev);
+function play(p) {
+  stopEngines();
+  R.playing = true; R.userScrollAt = 0;
+  engine().start(p || R.cur);
+  wake(true); mediaSession(); updateDock();
+  scrollToCur("center");
+}
+function stopEngines() { dev.stop(); aud.stop(); }
+function pause() { R.playing = false; stopEngines(); afterStop(); }
+function afterStop() { savePos(R.doc.id, R.cur.b, R.cur.s, pct(), true); wake(false); updateDock(); }
+function finish() {
+  const wasRange = !!R.range; R.playing = false; stopEngines(); afterStop();
+  if (wasRange) say("Finished " + R.range.label.toLowerCase() + ".");
+}
+function stopAll() { if (R.doc && R.playing) { R.playing = false; stopEngines(); afterStop(); } Object.values(R.audioURLs).forEach(u => URL.revokeObjectURL(u)); R.audioURLs = {}; auFile = -1; au.removeAttribute("src"); }
+function jump(p) {
+  if (!p) return; p = clampPos(p);
+  if (R.range && !inRange(p)) { R.range = null; }
+  if (R.playing) play(p); else { setCur(p, { scroll: "center" }); }
+}
+$("t-play").addEventListener("click", () => { hideChoices(); R.playing ? pause() : play(R.cur); });
+$("t-ns").addEventListener("click", () => jump(nextS(R.cur)));
+$("t-ps").addEventListener("click", () => jump(prevS(R.cur)));
+$("t-np").addEventListener("click", () => jump(nextP(R.cur)));
+$("t-pp").addEventListener("click", () => jump(prevP(R.cur)));
+$("t-speed").addEventListener("click", () => { const i = SPEEDS.indexOf(R.speed); setSpeed(SPEEDS[(i + 1) % SPEEDS.length]); });
+function setSpeed(v) {
+  R.speed = v; ls.set("speed", v);
+  if (R.engine === "audio") au.playbackRate = v; else if (R.playing) play(R.cur);
+  updateDock();
+}
+$("scrub").addEventListener("input", (e) => {
+  const target = (+e.target.value / 1000) * R.st.total; let b = 0;
+  for (let i = 0; i < R.st.cum.length; i++) { if (R.st.cum[i] <= target) b = i; else break; }
+  $("w-pos").textContent = "p. " + R.doc.blocks[b].pg;
+});
+$("scrub").addEventListener("change", (e) => {
+  const target = (+e.target.value / 1000) * R.st.total; let b = 0;
+  for (let i = 0; i < R.st.cum.length; i++) { if (R.st.cum[i] <= target) b = i; else break; }
+  R.range = null; jump({ b, s: 0 });
+});
+
+/* tap a sentence */
+$("text").addEventListener("click", (e) => {
+  const sp = e.target.closest(".s"); if (!sp) return;
+  if (getSelection && String(getSelection()).length > 2) return; // user is selecting text
+  const p = { b: +sp.dataset.b, s: +sp.dataset.s };
+  document.querySelectorAll(".s.sel").forEach(x => x.classList.remove("sel"));
+  R.sel = p; sp.classList.add("sel");
+  $("ch-page").textContent = "Page " + R.doc.blocks[p.b].pg + " only";
+  $("ch-para").textContent = R.doc.blocks[p.b].k === "h" ? "This heading" : "This paragraph";
+  $("choices").hidden = false; updateDockHeight();
+});
+function hideChoices() { $("choices").hidden = true; document.querySelectorAll(".s.sel").forEach(x => x.classList.remove("sel")); R.sel = null; updateDockHeight(); }
+$("ch-x").addEventListener("click", hideChoices);
+$("ch-from").addEventListener("click", () => { const p = R.sel; hideChoices(); R.range = null; play(p); });
+$("ch-para").addEventListener("click", () => { const p = R.sel; hideChoices(); R.range = { from: p.b, to: p.b, label: "This paragraph" }; play(p); });
+$("ch-page").addEventListener("click", () => {
+  const p = R.sel; hideChoices(); const pg = R.doc.blocks[p.b].pg; let from = p.b, to = p.b;
+  while (from > 0 && R.doc.blocks[from - 1].pg === pg) from--;
+  while (to + 1 < R.doc.blocks.length && R.doc.blocks[to + 1].pg === pg) to++;
+  R.range = { from, to, label: "Page " + pg + " only" };
+  play({ b: from, s: 0 });
+});
+$("range-x").addEventListener("click", () => { R.range = null; updateDock(); if (!R.playing) play(R.cur); });
+
+/* keyboard (laptop) */
+addEventListener("keydown", (e) => {
+  if ($("reader").hidden || e.target.closest("input,select,textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (!$("sheet-toc").hidden || !$("sheet-set").hidden) { if (e.key === "Escape") closeSheets(); return; }
+  if (e.key === " " || e.key === "k") { e.preventDefault(); R.playing ? pause() : play(R.cur); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); jump(e.shiftKey ? nextP(R.cur) : nextS(R.cur)); }
+  else if (e.key === "ArrowLeft") { e.preventDefault(); jump(e.shiftKey ? prevP(R.cur) : prevS(R.cur)); }
+  else if (e.key === "ArrowDown" && e.shiftKey) { e.preventDefault(); jump(nextP(R.cur)); }
+  else if (e.key === "ArrowUp" && e.shiftKey) { e.preventDefault(); jump(prevP(R.cur)); }
+  else if (e.key === "Escape") hideChoices();
+});
+
+/* dock */
+const PLAY = '<path d="M8 5l12 7-12 7z"/>', PAUSE = '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>';
+function sectionOf(b) { for (let i = b; i >= 0; i--) if (R.doc.blocks[i].k === "h") return disp(R.doc.blocks[i].s[0]); return R.doc.title; }
+function remainingSec() {
+  if (R.engine === "audio" && R.doc.audio) { let s = 0; const T = R.doc.audio.timing; for (let i = R.cur.b; i < T.length; i++) s += T[i][2]; s -= (T[R.cur.b][3][R.cur.s] || 0); return s / R.speed; }
+  return (R.st.total - R.st.cum[R.cur.b]) / (14.5 * R.speed);
+}
+function updateDock() {
+  if (!R.doc) return;
+  $("play-ic").innerHTML = R.playing ? PAUSE : PLAY;
+  $("t-play").setAttribute("aria-label", R.playing ? "Pause" : "Play");
+  $("t-speed").textContent = (Math.round(R.speed * 100) / 100) + "×";
+  $("w-sec").textContent = sectionOf(R.cur.b);
+  $("w-pos").textContent = "p. " + R.doc.blocks[R.cur.b].pg + " · " + Math.round(pct() * 100) + "% · " + fmtDur(remainingSec()) + " left";
+  if (document.activeElement !== $("scrub")) $("scrub").value = Math.round(pct() * 1000);
+  $("rangebar").hidden = !R.range; if (R.range) $("range-label").textContent = R.range.label;
+  updateDockHeight();
+}
+function updateDockHeight() { requestAnimationFrame(() => document.documentElement.style.setProperty("--dock-h", $("dock").offsetHeight + "px")); }
+
+/* lock-screen / headphone controls */
+function mediaSession() {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: sectionOf(R.cur.b), artist: R.doc.title, album: "Listening Reader" });
+    const h = {
+      play: () => play(R.cur), pause: () => pause(),
+      previoustrack: () => jump(prevP(R.cur)), nexttrack: () => jump(nextP(R.cur)),
+      seekbackward: () => jump(prevS(R.cur)), seekforward: () => jump(nextS(R.cur))
+    };
+    for (const [k, fn] of Object.entries(h)) { try { navigator.mediaSession.setActionHandler(k, fn); } catch {} }
+  } catch {}
+}
+let wakeLock = null;
+async function wake(on) {
+  try {
+    if (on && $("awake").checked && "wakeLock" in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { wakeLock = null; }); }
+    if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch { wakeLock = null; }
+}
+document.addEventListener("visibilitychange", () => {
+  if (!R.doc) return;
+  if (document.hidden) savePos(R.doc.id, R.cur.b, R.cur.s, pct(), true);
+  else if (R.playing) wake(true);
+});
+
+/* ---------- contents sheet ---------- */
+function buildTOC() {
+  const nav = $("toc"); nav.textContent = "";
+  R.doc.blocks.forEach((b, bi) => {
+    if (b.k !== "h") return;
+    const a = document.createElement("a"); a.href = "#"; a.className = "l" + Math.min(3, b.lvl || 2); a.dataset.b = bi;
+    const t = document.createElement("span"); t.textContent = disp(b.s[0]); const pgs = document.createElement("span"); pgs.textContent = "p. " + b.pg;
+    a.append(t, pgs); nav.append(a);
+  });
+  if (!nav.children.length) { const n = document.createElement("p"); n.className = "note"; n.textContent = "No headings were found in this document. Use Go to page instead."; nav.append(n); }
+}
+$("toc").addEventListener("click", (e) => { const a = e.target.closest("a"); if (!a) return; e.preventDefault(); closeSheets(); R.range = null; jump({ b: +a.dataset.b, s: 0 }); });
+function gotoPage() {
+  const v = $("goto-in").value.trim(); if (!v) return;
+  let bi = R.doc.blocks.findIndex(b => b.pg === v);
+  if (bi < 0 && /^\d+$/.test(v)) { const n = +v; bi = R.doc.blocks.findIndex(b => /^\d+$/.test(b.pg) && +b.pg >= n); }
+  if (bi < 0) { say("There's no page " + v + " in this text. Pages run from " + R.doc.blocks[0].pg + " to " + R.doc.blocks[R.doc.blocks.length - 1].pg + "."); return; }
+  closeSheets(); R.range = null; jump({ b: bi, s: 0 });
+}
+$("goto-go").addEventListener("click", gotoPage);
+$("goto-in").addEventListener("keydown", (e) => { if (e.key === "Enter") gotoPage(); });
+function openSheet(id) {
+  $("scrim").hidden = false; $(id).hidden = false;
+  if (id === "sheet-toc") {
+    $("toc-left").textContent = "Pages " + R.doc.blocks[0].pg + "–" + R.doc.blocks[R.doc.blocks.length - 1].pg + " · about " + fmtDur(remainingSec()) + " left at " + R.speed + "×";
+    const sec = [...$("toc").querySelectorAll("a")].filter(a => +a.dataset.b <= R.cur.b).pop();
+    $("toc").querySelectorAll("a.here").forEach(a => a.classList.remove("here"));
+    if (sec) { sec.classList.add("here"); sec.scrollIntoView({ block: "center" }); }
+  }
+  if (id === "sheet-set") syncSettings();
+}
+function closeSheets() { $("scrim").hidden = true; $("sheet-toc").hidden = true; $("sheet-set").hidden = true; }
+$("btn-toc").addEventListener("click", () => openSheet("sheet-toc"));
+$("btn-set").addEventListener("click", () => openSheet("sheet-set"));
+$("scrim").addEventListener("click", closeSheets);
+document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", closeSheets));
+$("btn-back").addEventListener("click", () => { stopAll(); R.doc = null; $("reader").hidden = true; $("library").hidden = false; document.title = "Listening Reader"; loadLibrary(); window.scrollTo(0, 0); });
+
+/* ---------- settings ---------- */
+const sp = $("speed-sel"); SPEEDS.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = v + "×"; sp.append(o); });
+function syncSettings() {
+  const d = R.doc; const ok = d.audio && d.audio.files.every(f => R.haveAudio.includes(f));
+  $("seg-src").querySelectorAll("button").forEach(b => { b.setAttribute("aria-pressed", String(b.dataset.v === R.engine)); if (b.dataset.v === "audio") b.disabled = !ok; });
+  $("src-sub").textContent = ok ? "MP3 made with " + d.audio.voice.replace(/^[a-z]{2}-[A-Z]{2}-/, "").replace(/Neural$/, "") + "." :
+    d.audio ? "Add the " + d.audio.files.filter(f => !R.haveAudio.includes(f)).length + " missing MP3 file(s) from the library to use the natural voice." :
+    "Run readalong.py with --audio to make a natural-voice MP3 for this text.";
+  $("row-voice").hidden = R.engine !== "device";
+  sp.value = R.speed; $("awake").checked = ls.get("awake", false); $("follow").checked = R.follow;
+  const th = ls.get("theme", ""); $("seg-theme").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === th)));
+  $("btn-rm").parentElement.hidden = !!d.sample && false;
+  $("rm-sub").textContent = d.sample ? "Hides the sample from your library." : "Deletes the text and audio stored here. Your files in iCloud stay as they are.";
+}
+$("seg-src").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  const was = R.playing; if (was) pause();
+  R.engine = b.dataset.v; ls.set("engine:" + R.doc.id, R.engine); syncSettings(); updateDock(); if (was) play(R.cur);
+});
+$("voice-sel").addEventListener("change", (e) => { ls.set("voice", e.target.value); if (R.playing && R.engine === "device") play(R.cur); });
+sp.addEventListener("change", (e) => setSpeed(+e.target.value));
+$("fs-minus").addEventListener("click", () => fontScale(-0.08));
+$("fs-plus").addEventListener("click", () => fontScale(0.08));
+function fontScale(d) { R.fontScale = Math.min(1.8, Math.max(0.75, R.fontScale + d)); ls.set("font", R.fontScale); document.documentElement.style.setProperty("--read-size", (1.12 * R.fontScale).toFixed(3) + "rem"); scrollToCur("center", true); }
+$("awake").addEventListener("change", (e) => { ls.set("awake", e.target.checked); wake(R.playing && e.target.checked); });
+$("follow").addEventListener("change", (e) => { R.follow = e.target.checked; ls.set("follow", R.follow); });
+$("seg-theme").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; ls.set("theme", b.dataset.v); applyTheme(); syncSettings(); });
+function applyTheme() { const t = ls.get("theme", ""); if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); }
+let rmArmed = false;
+$("btn-rm").addEventListener("click", async () => {
+  if (!rmArmed) { rmArmed = true; $("btn-rm").textContent = "Tap again to remove"; setTimeout(() => { rmArmed = false; $("btn-rm").textContent = "Remove"; }, 3500); return; }
+  rmArmed = false; $("btn-rm").textContent = "Remove";
+  const d = R.doc; closeSheets();
+  if (d.sample) ls.set("hideSample", true);
+  else { try { await del("docs", d.id); for (const k of await keys("audio")) if (k.startsWith(d.id + "/")) await del("audio", k); } catch {} }
+  $("btn-back").click();
+});
+
+/* boot */
+applyTheme();
+loadLibrary();
+addEventListener("resize", updateDockHeight);
+})();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+</script>
+</body>
+</html>
